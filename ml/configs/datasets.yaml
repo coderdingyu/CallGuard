@@ -1,0 +1,27 @@
+data_root: data
+
+datasets:
+  teleantifraud:
+    hf_repo: JimmyMa99/TeleAntiFraud
+    repo_type: dataset
+    raw_dir: data/raw/teleantifraud
+    interim_dir: data/interim/teleantifraud
+    processed_dir: data/processed/teleantifraud_binary
+    priority_files:
+      - binary_classification.zip
+      - audio.zip
+      - dataset_manifest.json
+    labels:
+      normal: normal
+      fraud: fraud
+
+  ravdess:
+    raw_dir: data/raw/ravdess
+    interim_dir: data/interim/ravdess
+    processed_dir: data/processed/ravdess_emotion
+
+  esd:
+    raw_dir: data/raw/esd
+    interim_dir: data/interim/esd
+    processed_dir: data/processed/esd_emotion
+

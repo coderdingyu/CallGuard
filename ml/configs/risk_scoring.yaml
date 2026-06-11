@@ -1,0 +1,39 @@
+weights:
+  text_model_score: 0.50
+  audio_stress_score: 0.30
+  rule_score: 0.20
+
+risk_thresholds:
+  low: 0.25
+  medium: 0.50
+  high: 0.75
+
+keyword_groups:
+  money_transfer:
+    - 转账
+    - 汇款
+    - 付款
+    - 保证金
+    - 安全账户
+    - 退款
+  identity_impersonation:
+    - 公安
+    - 警察
+    - 法院
+    - 检察院
+    - 客服
+    - 银行
+  urgency_pressure:
+    - 马上
+    - 立即
+    - 现在
+    - 不能告诉别人
+    - 保密
+    - 逾期
+  sensitive_info:
+    - 验证码
+    - 密码
+    - 身份证
+    - 银行卡
+    - 账号
+

@@ -1,0 +1,82 @@
+{
+  "model": "tfidf_char_ngram_logistic_regression",
+  "dataset": "teleantifraud_asr",
+  "train_samples": 240,
+  "test_samples": 80,
+  "accuracy": 0.95,
+  "macro_f1": 0.949874686716792,
+  "weighted_f1": 0.949874686716792,
+  "classification_report": {
+    "normal": {
+      "precision": 0.9090909090909091,
+      "recall": 1.0,
+      "f1-score": 0.9523809523809523,
+      "support": 40.0
+    },
+    "fraud": {
+      "precision": 1.0,
+      "recall": 0.9,
+      "f1-score": 0.9473684210526315,
+      "support": 40.0
+    },
+    "accuracy": 0.95,
+    "macro avg": {
+      "precision": 0.9545454545454546,
+      "recall": 0.95,
+      "f1-score": 0.949874686716792,
+      "support": 80.0
+    },
+    "weighted avg": {
+      "precision": 0.9545454545454545,
+      "recall": 0.95,
+      "f1-score": 0.949874686716792,
+      "support": 80.0
+    }
+  },
+  "top_terms": {
+    "fraud": [
+      "p",
+      "信",
+      "款",
+      "a",
+      "ap",
+      "安全",
+      "投",
+      "需",
+      "资",
+      "金",
+      "pp",
+      "息",
+      "信息",
+      "接",
+      "载",
+      "app",
+      "下载",
+      "全",
+      "載",
+      "資"
+    ],
+    "normal": [
+      "想",
+      "午",
+      "晚",
+      "餐",
+      "天",
+      "上",
+      "挺",
+      "明天",
+      "下午",
+      "还",
+      "大概",
+      "概",
+      "多",
+      "分",
+      "店",
+      "吃",
+      "晚上",
+      "我想",
+      "工作",
+      "空"
+    ]
+  }
+}

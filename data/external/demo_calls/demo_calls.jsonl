@@ -1,0 +1,10 @@
+{"id":"demo_normal_001","split":"demo","label":"normal","text":"你好，我是快递员，你的包裹已经放在小区门口的快递柜了，取件码稍后短信发给你。","scenario":"normal_delivery"}
+{"id":"demo_normal_002","split":"demo","label":"normal","text":"您好，这里是医院预约中心，提醒您明天上午九点有体检预约，如需改期可以在公众号操作。","scenario":"normal_service"}
+{"id":"demo_normal_003","split":"demo","label":"normal","text":"妈，我晚上可能晚一点回来，饭不用等我，我到家前会给你发消息。","scenario":"normal_family"}
+{"id":"demo_normal_004","split":"demo","label":"normal","text":"您好，您上次咨询的课程资料已经发送到邮箱，方便的时候可以查看。","scenario":"normal_sales"}
+{"id":"demo_fraud_001","split":"demo","label":"fraud","text":"我是公安机关工作人员，你的银行卡涉嫌洗钱，现在必须马上把资金转到安全账户，不要告诉任何人。","scenario":"police_impersonation"}
+{"id":"demo_fraud_002","split":"demo","label":"fraud","text":"这里是客服中心，你的订单出现异常退款，需要你提供银行卡号和验证码，否则今天就无法处理。","scenario":"customer_service_refund"}
+{"id":"demo_fraud_003","split":"demo","label":"fraud","text":"你的账号存在严重风险，请立即打开链接填写身份证、密码和验证码，我们会帮你解除冻结。","scenario":"account_freeze"}
+{"id":"demo_fraud_004","split":"demo","label":"fraud","text":"投资名额只剩最后一个，现在转账保证金就能锁定收益，这件事需要保密，不能告诉家里人。","scenario":"investment_scam"}
+{"id":"demo_medium_001","split":"demo","label":"medium_risk","text":"我们是平台客服，系统检测到订单异常，需要你尽快核实银行卡信息。","scenario":"suspicious_service"}
+{"id":"demo_medium_002","split":"demo","label":"medium_risk","text":"你的账户今天会被限制使用，请马上按照提示操作，不然可能影响后续提现。","scenario":"suspicious_account"}

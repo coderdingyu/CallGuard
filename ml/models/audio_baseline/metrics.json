@@ -1,0 +1,43 @@
+{
+  "model": "logistic_regression_audio_features",
+  "train_samples": 4000,
+  "test_samples": 400,
+  "sample_rate": 16000,
+  "duration_seconds": 5.0,
+  "accuracy": 0.7175,
+  "macro_f1": 0.7141971912918667,
+  "weighted_f1": 0.7141971912918667,
+  "classification_report": {
+    "normal": {
+      "precision": 0.7770700636942676,
+      "recall": 0.61,
+      "f1-score": 0.6834733893557423,
+      "support": 200.0
+    },
+    "fraud": {
+      "precision": 0.6790123456790124,
+      "recall": 0.825,
+      "f1-score": 0.744920993227991,
+      "support": 200.0
+    },
+    "accuracy": 0.7175,
+    "macro avg": {
+      "precision": 0.72804120468664,
+      "recall": 0.7175,
+      "f1-score": 0.7141971912918667,
+      "support": 400.0
+    },
+    "weighted avg": {
+      "precision": 0.7280412046866399,
+      "recall": 0.7175,
+      "f1-score": 0.7141971912918667,
+      "support": 400.0
+    }
+  },
+  "failures": {
+    "train": [],
+    "test": [],
+    "train_failure_count": 0,
+    "test_failure_count": 0
+  }
+}

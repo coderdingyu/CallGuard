@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+
+# Data and model artifacts
+data/raw/
+data/interim/
+data/processed/
+experiments/
+logs/
+ml/models/asr/
+ml/models/audio_baseline/*.joblib
+ml/models/emotion_baseline/*.joblib
+ml/models/text_baseline/*.joblib
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.bin
+*.safetensors
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,138 @@
+{
+  "model": "logistic_regression_audio_features",
+  "dataset": "csemotions_emotion",
+  "train_samples": 3327,
+  "test_samples": 833,
+  "sample_rate": 16000,
+  "duration_seconds": 5.0,
+  "emotion_labels": [
+    "neutral",
+    "happy",
+    "angry",
+    "sad",
+    "surprise",
+    "playfulness",
+    "fearful"
+  ],
+  "pressure_mapping": {
+    "neutral": 0.1,
+    "happy": 0.18,
+    "playfulness": 0.25,
+    "sad": 0.55,
+    "surprise": 0.7,
+    "fearful": 0.9,
+    "angry": 0.95
+  },
+  "pressure_labels": [
+    "normal",
+    "medium",
+    "high"
+  ],
+  "pressure_level_scores": {
+    "normal": 0.18,
+    "medium": 0.62,
+    "high": 0.925
+  },
+  "accuracy": 0.5666266506602641,
+  "macro_f1": 0.565987280087725,
+  "weighted_f1": 0.5661833881954805,
+  "pressure_mae": 0.22637763619422913,
+  "pressure_accuracy": 0.6230492196878752,
+  "pressure_macro_f1": 0.6113841274191332,
+  "classification_report": {
+    "neutral": {
+      "precision": 0.5511811023622047,
+      "recall": 0.7142857142857143,
+      "f1-score": 0.6222222222222222,
+      "support": 98.0
+    },
+    "happy": {
+      "precision": 0.47413793103448276,
+      "recall": 0.45454545454545453,
+      "f1-score": 0.4641350210970464,
+      "support": 121.0
+    },
+    "angry": {
+      "precision": 0.688,
+      "recall": 0.5584415584415584,
+      "f1-score": 0.6164874551971327,
+      "support": 154.0
+    },
+    "sad": {
+      "precision": 0.6181818181818182,
+      "recall": 0.6238532110091743,
+      "f1-score": 0.6210045662100456,
+      "support": 109.0
+    },
+    "surprise": {
+      "precision": 0.49586776859504134,
+      "recall": 0.5882352941176471,
+      "f1-score": 0.5381165919282511,
+      "support": 102.0
+    },
+    "playfulness": {
+      "precision": 0.5446428571428571,
+      "recall": 0.49193548387096775,
+      "f1-score": 0.5169491525423728,
+      "support": 124.0
+    },
+    "fearful": {
+      "precision": 0.5901639344262295,
+      "recall": 0.576,
+      "f1-score": 0.582995951417004,
+      "support": 125.0
+    },
+    "accuracy": 0.5666266506602641,
+    "macro avg": {
+      "precision": 0.5660250588203762,
+      "recall": 0.5724709594672166,
+      "f1-score": 0.565987280087725,
+      "support": 833.0
+    },
+    "weighted avg": {
+      "precision": 0.5721548311574717,
+      "recall": 0.5666266506602641,
+      "f1-score": 0.5661833881954805,
+      "support": 833.0
+    }
+  },
+  "pressure_classification_report": {
+    "normal": {
+      "precision": 0.7191358024691358,
+      "recall": 0.6793002915451894,
+      "f1-score": 0.6986506746626686,
+      "support": 343.0
+    },
+    "medium": {
+      "precision": 0.5065502183406113,
+      "recall": 0.5497630331753555,
+      "f1-score": 0.5272727272727272,
+      "support": 211.0
+    },
+    "high": {
+      "precision": 0.6071428571428571,
+      "recall": 0.6093189964157706,
+      "f1-score": 0.6082289803220036,
+      "support": 279.0
+    },
+    "accuracy": 0.6230492196878752,
+    "macro avg": {
+      "precision": 0.6109429593175347,
+      "recall": 0.6127941070454385,
+      "f1-score": 0.6113841274191332,
+      "support": 833.0
+    },
+    "weighted avg": {
+      "precision": 0.6277773510920044,
+      "recall": 0.6230492196878752,
+      "f1-score": 0.6249551168951738,
+      "support": 833.0
+    }
+  },
+  "failures": {
+    "train": [],
+    "test": [],
+    "train_failure_count": 0,
+    "test_failure_count": 0
+  }
+}

@@ -1,0 +1,7 @@
+dataset,source_url,modality,language,primary_use,license_or_access,status,local_raw_dir,notes
+TeleAntiFraud,https://huggingface.co/datasets/JimmyMa99/TeleAntiFraud,audio+text,Chinese,fraud risk classification,Apache-2.0 / gated Hugging Face access,prepared,data/raw/teleantifraud,Binary task prepared: 4000 train and 400 test records; 4400 referenced audio files; 0 missing.
+CSEMOTIONS,https://modelscope.cn/datasets/AIDC-AI/CSEMOTIONS,audio,Chinese,speech emotion and pressure auxiliary modeling,Apache-2.0,prepared,data/raw/csemotions,Prepared 4160 Mandarin emotional speech records; train 3327 and test 833; exported emotion/pressure baseline.
+ESD,https://github.com/HLTSingapore/Emotional-Speech-Data,audio,Mandarin+English,speech emotion recognition,research license / request required,planned,data/raw/esd,Useful for Mandarin emotion pretraining.
+RAVDESS,https://smartlaboratory.org/resources/speech-song-database-ravdess/,audio,English,speech emotion baseline,dataset-specific terms,planned,data/raw/ravdess,Small and good for the first audio pipeline test.
+CREMA-D,https://github.com/CheyneyComputerScience/CREMA-D,audio/video,English,speech emotion robustness,ODC Open Database License,planned,data/raw/crema_d,Larger emotion dataset.
+ChiFraud,https://github.com/xuemingxxx/ChiFraud,text,Chinese,text fraud augmentation,repository terms,planned,data/raw/chifraud,Useful for text-side risk modeling.

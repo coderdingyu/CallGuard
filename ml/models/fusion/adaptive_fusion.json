@@ -1,0 +1,13 @@
+{
+  "audio_reliability": 0.6731615336266499,
+  "text_reliability": 1.0,
+  "reliability_power": 3.0,
+  "text_confidence_gate": 0.15,
+  "confidence_floor": 0.6000000000000001,
+  "rule_boost": 0.0,
+  "decision_threshold": 0.525,
+  "name": "callguard_caef",
+  "version": "1.0",
+  "description": "Confidence-Aware Explainable Fusion",
+  "trained_on": "TeleAntiFraud with a disjoint 160/80 fusion train-validation split"
+}
