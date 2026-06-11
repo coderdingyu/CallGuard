@@ -86,12 +86,16 @@ def find_risk_keywords(
     return matches
 
 
-def score_text_rules(text: str) -> float:
-    matches = find_risk_keywords(text)
+def score_text_rules(
+    text: str,
+    keyword_groups: dict[str, list[str]] | None = None,
+) -> float:
+    groups = keyword_groups or DEFAULT_KEYWORD_GROUPS
+    matches = find_risk_keywords(text, groups)
     if not matches:
         return 0.0
 
     matched_groups = {match.group for match in matches}
-    group_score = min(len(matched_groups) / len(DEFAULT_KEYWORD_GROUPS), 1.0)
+    group_score = min(len(matched_groups) / max(len(groups), 1), 1.0)
     keyword_score = min(len(matches) / 8.0, 1.0)
     return round(0.65 * group_score + 0.35 * keyword_score, 4)

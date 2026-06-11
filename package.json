@@ -22,6 +22,7 @@
     "ml:train:emotion-baseline": ".venv\\Scripts\\python.exe scripts/train_emotion_baseline.py",
     "ml:train:text-baseline": ".venv\\Scripts\\python.exe scripts/train_text_baseline.py",
     "ml:train:adaptive-fusion": ".venv\\Scripts\\python.exe scripts/train_adaptive_fusion.py",
+    "test:api": ".venv\\Scripts\\python.exe scripts/test_api_smoke.py",
     "check": "python scripts/check_project.py"
   }
 }

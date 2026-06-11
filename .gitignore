@@ -17,6 +17,7 @@ build/
 data/raw/
 data/interim/
 data/processed/
+data/local/
 experiments/
 logs/
 ml/models/asr/

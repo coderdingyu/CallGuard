@@ -4,16 +4,23 @@ import {
   Activity,
   AlertTriangle,
   AudioWaveform,
+  BarChart3,
+  Database,
   FileAudio,
   Gauge,
   HeartPulse,
+  History,
   LoaderCircle,
   MessageSquareText,
   Mic,
   PlayCircle,
+  Plus,
   RotateCcw,
+  Search,
   ShieldCheck,
+  SlidersHorizontal,
   Square,
+  Trash2,
   Upload
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -21,53 +28,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8001";
 
-const copy = {
-  audio: "\u97f3\u9891",
-  transcript: "\u901a\u8bdd\u6587\u672c",
-  autoTranscript: "\u81ea\u52a8\u8f6c\u5199",
-  noFile: "\u672a\u9009\u62e9\u6587\u4ef6",
-  analyze: "\u5206\u6790\u901a\u8bdd",
-  reset: "\u91cd\u7f6e",
-  recordStart: "\u5f00\u59cb\u5f55\u97f3",
-  recordStop: "\u505c\u6b62\u5f55\u97f3",
-  recording: "\u6b63\u5728\u5f55\u97f3",
-  demoSamples: "\u6f14\u793a\u6837\u4f8b",
-  loadingSample: "\u8f7d\u5165\u6837\u4f8b",
-  textOnly: "\u7eaf\u6587\u672c",
-  signal: "\u4fe1\u53f7\u6982\u89c8",
-  fusionRisk: "\u878d\u5408\u98ce\u9669",
-  audioRisk: "\u97f3\u9891\u98ce\u9669",
-  textRisk: "\u6587\u672c\u98ce\u9669",
-  stressRisk: "\u538b\u529b\u4fe1\u53f7",
-  overall: "\u7efc\u5408\u5224\u65ad",
-  waiting: "\u7b49\u5f85\u5206\u6790",
-  suggestion: "\u5efa\u8bae",
-  modelEvidence: "\u6a21\u578b\u8bc1\u636e",
-  ruleSignal: "\u89c4\u5219\u4fe1\u53f7",
-  chooseToStart: "\u4e0a\u4f20\u97f3\u9891\u6216\u8f93\u5165\u901a\u8bdd\u6587\u672c\u540e\u5f00\u59cb\u5206\u6790\u3002",
-  riskCall: "\u98ce\u9669\u901a\u8bdd",
-  normalCall: "\u6b63\u5e38\u901a\u8bdd",
-  factors: "\u98ce\u9669\u56e0\u7d20",
-  noFactors: "\u6682\u65e0\u6587\u672c\u98ce\u9669\u56e0\u7d20\u3002",
-  modelState: "\u6a21\u578b\u72b6\u6001",
-  emotionAssist: "\u8bed\u97f3\u538b\u529b/\u60c5\u7eea\u8f85\u52a9",
-  primaryEmotion: "\u4e3b\u8981\u60c5\u7eea",
-  emotionConfidence: "\u60c5\u7eea\u7f6e\u4fe1\u5ea6",
-  pressureDrivers: "\u538b\u529b\u6765\u6e90",
-  pressureModel: "\u538b\u529b\u6a21\u578b",
-  pressureAuxiliary: "\u8f85\u52a9\u6307\u6807",
-  adaptiveFusion: "\u81ea\u9002\u5e94\u878d\u5408",
-  modalityAgreement: "\u6a21\u6001\u4e00\u81f4\u5ea6",
-  provideInput: "\u8bf7\u5148\u63d0\u4f9b\u97f3\u9891\u6216\u901a\u8bdd\u6587\u672c\u3002",
-  failed: "\u5206\u6790\u5931\u8d25\u3002",
-  demoFailed: "\u6837\u4f8b\u52a0\u8f7d\u5931\u8d25\u3002",
-  micUnsupported: "\u5f53\u524d\u6d4f\u89c8\u5668\u4e0d\u652f\u6301\u5f55\u97f3\u3002",
-  micDenied: "\u65e0\u6cd5\u83b7\u53d6\u9ea6\u514b\u98ce\u6743\u9650\u3002",
-  emptyRecording: "\u5f55\u97f3\u65f6\u95f4\u592a\u77ed\uff0c\u8bf7\u91cd\u65b0\u5f55\u5236\u3002",
-  placeholder:
-    "\u53ef\u9009\uff1a\u8f93\u5165\u6216\u4fee\u6b63\u901a\u8bdd\u6587\u672c\u3002\u7559\u7a7a\u65f6\u7cfb\u7edf\u4f1a\u5c1d\u8bd5\u81ea\u52a8\u8f6c\u5199\u97f3\u9891\u3002"
-};
-
+type View = "analyze" | "dashboard" | "history" | "rules";
 type RiskLevel = "normal" | "low" | "medium" | "high";
 
 interface RiskFactor {
@@ -140,6 +101,7 @@ interface TranscriptionResult {
 }
 
 interface CallAnalysisResult {
+  record_id: number | null;
   prediction: "normal" | "fraud";
   risk_score: number;
   risk_level: RiskLevel;
@@ -176,11 +138,59 @@ interface DemoSample {
   audio_file_name: string | null;
 }
 
+interface CallRecordSummary {
+  id: number;
+  created_at: string;
+  input_type: string;
+  file_name: string | null;
+  prediction: "normal" | "fraud";
+  risk_score: number;
+  risk_level: RiskLevel;
+  pressure_score: number | null;
+  pressure_level: RiskLevel | null;
+  transcript_preview: string;
+  risk_factors: RiskFactor[];
+  model_summary: Record<string, string | number | null>;
+}
+
+interface CallRecordDetail extends CallRecordSummary {
+  transcript: string;
+  analysis_result: CallAnalysisResult;
+}
+
+interface CallListResponse {
+  records: CallRecordSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+interface AnalyticsSummary {
+  total_calls: number;
+  high_risk_calls: number;
+  average_risk_score: number;
+  risk_level_counts: Record<string, number>;
+  prediction_counts: Record<string, number>;
+  top_keywords: Array<{ keyword: string; count: number }>;
+  recent_calls: CallRecordSummary[];
+}
+
+interface RuleRecord {
+  id: number;
+  group: string;
+  keyword: string;
+  weight: number;
+  enabled: boolean;
+  source: "default" | "custom" | string;
+  created_at: string;
+  updated_at: string;
+}
+
 const levelCopy: Record<RiskLevel, string> = {
-  normal: "\u6b63\u5e38",
-  low: "\u4f4e\u98ce\u9669",
-  medium: "\u4e2d\u98ce\u9669",
-  high: "\u9ad8\u98ce\u9669"
+  normal: "正常",
+  low: "低风险",
+  medium: "中风险",
+  high: "高风险"
 };
 
 const levelTone: Record<RiskLevel, string> = {
@@ -191,10 +201,10 @@ const levelTone: Record<RiskLevel, string> = {
 };
 
 const demoLabelCopy: Record<string, string> = {
-  normal: "\u6b63\u5e38",
-  fraud: "\u8bc8\u9a97",
-  high_pressure: "\u9ad8\u538b",
-  normal_pressure: "\u5e73\u7a33"
+  normal: "正常",
+  fraud: "诈骗",
+  high_pressure: "高压",
+  normal_pressure: "平稳"
 };
 
 const demoLabelTone: Record<string, string> = {
@@ -204,7 +214,15 @@ const demoLabelTone: Record<string, string> = {
   normal_pressure: "border-sky-200 bg-sky-50 text-sky-700"
 };
 
+const navItems: Array<{ id: View; label: string; icon: ReactNode }> = [
+  { id: "analyze", label: "分析台", icon: <ShieldCheck size={16} /> },
+  { id: "dashboard", label: "数据看板", icon: <BarChart3 size={16} /> },
+  { id: "history", label: "历史记录", icon: <History size={16} /> },
+  { id: "rules", label: "规则管理", icon: <SlidersHorizontal size={16} /> }
+];
+
 export default function Home() {
+  const [activeView, setActiveView] = useState<View>("analyze");
   const [file, setFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [transcript, setTranscript] = useState("");
@@ -215,6 +233,15 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
+  const [records, setRecords] = useState<CallRecordSummary[]>([]);
+  const [recordsTotal, setRecordsTotal] = useState(0);
+  const [selectedRecord, setSelectedRecord] = useState<CallRecordDetail | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
+  const [rules, setRules] = useState<RuleRecord[]>([]);
+  const [ruleFilter, setRuleFilter] = useState("");
+  const [ruleForm, setRuleForm] = useState({ group: "money_transfer", keyword: "", weight: "1.0" });
+  const [panelError, setPanelError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -228,17 +255,7 @@ export default function Home() {
   const audioPercent = Math.round((result?.audio?.risk_score ?? 0) * 100);
   const textPercent = Math.round((result?.text?.risk_score ?? 0) * 100);
   const stressPercent = Math.round((result?.emotion?.pressure_score ?? 0) * 100);
-  const emotionConfidencePercent = Math.round((result?.emotion?.emotion_confidence ?? 0) * 100);
-  const textModelPercent =
-    result?.text?.model_score !== null && result?.text?.model_score !== undefined
-      ? Math.round(result.text.model_score * 100)
-      : null;
-  const rulePercent = result?.text ? Math.round(result.text.rule_score * 100) : null;
-  const selectedName = file?.name ?? copy.noFile;
-  const factors = result?.text?.factors ?? [];
-  const evidenceTerms = result?.text?.evidence_terms ?? [];
-  const emotionDrivers = result?.emotion?.pressure_drivers ?? [];
-  const pressureProbabilities = result?.emotion?.pressure_probabilities ?? {};
+  const selectedName = file?.name ?? "未选择文件";
 
   const signalBars = useMemo(() => {
     const base = result ? riskPercent : 30;
@@ -249,12 +266,35 @@ export default function Home() {
     });
   }, [result, riskPercent]);
 
+  const filteredRules = useMemo(() => {
+    const query = ruleFilter.trim().toLowerCase();
+    if (!query) {
+      return rules;
+    }
+    return rules.filter(
+      (rule) =>
+        rule.group.toLowerCase().includes(query) ||
+        rule.keyword.toLowerCase().includes(query) ||
+        rule.source.toLowerCase().includes(query)
+    );
+  }, [ruleFilter, rules]);
+
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/demo/samples`)
-      .then((response) => (response.ok ? response.json() : []))
-      .then((payload) => setDemoSamples(Array.isArray(payload) ? payload : []))
-      .catch(() => setDemoSamples([]));
+    void loadDemoSamples();
+    void refreshOverview();
   }, []);
+
+  useEffect(() => {
+    if (activeView === "dashboard") {
+      void loadAnalytics();
+    }
+    if (activeView === "history") {
+      void loadRecords();
+    }
+    if (activeView === "rules") {
+      void loadRules();
+    }
+  }, [activeView]);
 
   useEffect(() => {
     return () => {
@@ -265,11 +305,133 @@ export default function Home() {
     };
   }, [audioUrl]);
 
-  function selectFile(nextFile: File | null) {
-    if (!nextFile) {
+  async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${path}`, init);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.detail ?? "请求失败");
+    }
+    return payload as T;
+  }
+
+  async function loadDemoSamples() {
+    try {
+      const payload = await apiJson<DemoSample[]>("/api/demo/samples");
+      setDemoSamples(Array.isArray(payload) ? payload : []);
+    } catch {
+      setDemoSamples([]);
+    }
+  }
+
+  async function refreshOverview() {
+    await Promise.allSettled([loadAnalytics(), loadRecords()]);
+  }
+
+  async function loadAnalytics() {
+    try {
+      setAnalytics(await apiJson<AnalyticsSummary>("/api/analytics/summary"));
+      setPanelError(null);
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "数据看板加载失败");
+    }
+  }
+
+  async function loadRecords() {
+    try {
+      const payload = await apiJson<CallListResponse>("/api/calls?limit=30&offset=0");
+      setRecords(payload.records);
+      setRecordsTotal(payload.total);
+      setPanelError(null);
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "历史记录加载失败");
+    }
+  }
+
+  async function loadRecordDetail(recordId: number) {
+    try {
+      setSelectedRecord(await apiJson<CallRecordDetail>(`/api/calls/${recordId}`));
+      setPanelError(null);
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "记录详情加载失败");
+    }
+  }
+
+  async function deleteRecord(recordId: number) {
+    try {
+      await apiJson(`/api/calls/${recordId}`, { method: "DELETE" });
+      if (selectedRecord?.id === recordId) {
+        setSelectedRecord(null);
+      }
+      await refreshOverview();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "删除失败");
+    }
+  }
+
+  async function loadRules() {
+    try {
+      setRules(await apiJson<RuleRecord[]>("/api/rules"));
+      setPanelError(null);
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "规则加载失败");
+    }
+  }
+
+  async function createRule() {
+    if (!ruleForm.keyword.trim()) {
+      setPanelError("请先输入关键词");
       return;
     }
-    setAudioFile(nextFile);
+    try {
+      await apiJson<RuleRecord>("/api/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          group: ruleForm.group.trim(),
+          keyword: ruleForm.keyword.trim(),
+          weight: Number(ruleForm.weight) || 1,
+          enabled: true
+        })
+      });
+      setRuleForm((value) => ({ ...value, keyword: "" }));
+      await loadRules();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "新增规则失败");
+    }
+  }
+
+  async function toggleRule(ruleId: number) {
+    try {
+      await apiJson<RuleRecord>(`/api/rules/${ruleId}/toggle`, { method: "PATCH" });
+      await loadRules();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "切换规则失败");
+    }
+  }
+
+  async function deleteRule(ruleId: number) {
+    try {
+      await apiJson(`/api/rules/${ruleId}`, { method: "DELETE" });
+      await loadRules();
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "删除规则失败");
+    }
+  }
+
+  async function resetDefaultRules() {
+    try {
+      const payload = await apiJson<RuleRecord[]>("/api/rules/reset-defaults", { method: "POST" });
+      setRules(payload);
+      setPanelError(null);
+    } catch (err) {
+      setPanelError(err instanceof Error ? err.message : "恢复默认规则失败");
+    }
+  }
+
+  function selectFile(nextFile: File | null) {
+    if (nextFile) {
+      setAudioFile(nextFile);
+    }
   }
 
   function setAudioFile(nextFile: File) {
@@ -279,6 +441,7 @@ export default function Home() {
     setFile(nextFile);
     setAudioUrl(URL.createObjectURL(nextFile));
     setResult(null);
+    setSavedNotice(null);
     setError(null);
   }
 
@@ -300,13 +463,14 @@ export default function Home() {
     setTranscript("");
     setResult(null);
     setError(null);
+    setSavedNotice(null);
     setRecordingSeconds(0);
   }
 
   async function startRecording() {
     const AudioContextConstructor = getAudioContextConstructor();
     if (!navigator.mediaDevices?.getUserMedia || !AudioContextConstructor) {
-      setError(copy.micUnsupported);
+      setError("当前浏览器不支持录音");
       return;
     }
 
@@ -333,6 +497,7 @@ export default function Home() {
       setIsRecording(true);
       setRecordingSeconds(0);
       setResult(null);
+      setSavedNotice(null);
       setError(null);
       recordingTimerRef.current = window.setInterval(
         () => setRecordingSeconds((value) => value + 1),
@@ -341,7 +506,7 @@ export default function Home() {
     } catch {
       closeRecordingGraph();
       setIsRecording(false);
-      setError(copy.micDenied);
+      setError("无法获取麦克风权限");
     }
   }
 
@@ -355,7 +520,7 @@ export default function Home() {
     closeRecordingGraph();
 
     if (chunks.length < 2) {
-      setError(copy.emptyRecording);
+      setError("录音时间太短，请重新录制");
       return;
     }
 
@@ -365,7 +530,6 @@ export default function Home() {
       type: "audio/wav"
     });
     setAudioFile(nextFile);
-    setError(null);
   }
 
   function closeRecordingGraph() {
@@ -388,6 +552,7 @@ export default function Home() {
   async function loadDemoSample(sample: DemoSample) {
     setLoadingDemoId(sample.id);
     setResult(null);
+    setSavedNotice(null);
     setError(null);
     setTranscript(sample.transcript);
 
@@ -395,20 +560,19 @@ export default function Home() {
       if (sample.has_audio) {
         const response = await fetch(`${API_BASE_URL}/api/demo/samples/${sample.id}/audio`);
         if (!response.ok) {
-          throw new Error(copy.demoFailed);
+          throw new Error("样例加载失败");
         }
         const blob = await response.blob();
-        const nextFile = new File(
-          [blob],
-          sample.audio_file_name ?? `${sample.id}.wav`,
-          { type: blob.type || "audio/wav" }
+        setAudioFile(
+          new File([blob], sample.audio_file_name ?? `${sample.id}.wav`, {
+            type: blob.type || "audio/wav"
+          })
         );
-        setAudioFile(nextFile);
       } else {
         clearAudioFile();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : copy.demoFailed);
+      setError(err instanceof Error ? err.message : "样例加载失败");
     } finally {
       setLoadingDemoId(null);
     }
@@ -416,12 +580,13 @@ export default function Home() {
 
   async function analyzeCall() {
     if (!file && !transcript.trim()) {
-      setError(copy.provideInput);
+      setError("请先提供音频或通话文本");
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setSavedNotice(null);
 
     const formData = new FormData();
     if (file) {
@@ -436,12 +601,17 @@ export default function Home() {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.detail ?? copy.failed);
+        throw new Error(payload.detail ?? "分析失败");
       }
-      setResult(payload as CallAnalysisResult);
+      const nextResult = payload as CallAnalysisResult;
+      setResult(nextResult);
+      setSavedNotice(
+        nextResult.record_id ? `已保存到历史记录 #${nextResult.record_id}` : "本次结果未写入历史记录"
+      );
+      await refreshOverview();
     } catch (err) {
       setResult(null);
-      setError(err instanceof Error ? err.message : copy.failed);
+      setError(err instanceof Error ? err.message : "分析失败");
     } finally {
       setIsLoading(false);
     }
@@ -450,35 +620,63 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-[#171b22]">
       <header className="border-b border-[#dde2ea] bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-md bg-[#0f766e] text-white shadow-sm">
-              <ShieldCheck size={22} />
+        <div className="mx-auto max-w-7xl px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-md bg-[#0f766e] text-white shadow-sm">
+                <ShieldCheck size={22} />
+              </div>
+              <div>
+                <p className="text-sm text-[#667085]">Call risk awareness</p>
+                <h1 className="text-xl font-semibold tracking-normal">CallGuard</h1>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-[#667085]">Call risk awareness</p>
-              <h1 className="text-xl font-semibold tracking-normal">CallGuard</h1>
-            </div>
+            <nav className="flex flex-wrap items-center gap-2">
+              {navItems.map((item) => (
+                <button
+                  className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition ${
+                    activeView === item.id
+                      ? "border-[#0f766e] bg-[#e6f4f1] text-[#0f766e]"
+                      : "border-[#cfd7e3] bg-white text-[#344054] hover:bg-[#f2f5f8]"
+                  }`}
+                  key={item.id}
+                  onClick={() => setActiveView(item.id)}
+                  type="button"
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+              <button
+                className="inline-flex h-10 items-center gap-2 rounded-md border border-[#cfd7e3] bg-white px-3 text-sm font-medium text-[#344054] transition hover:bg-[#f2f5f8]"
+                onClick={reset}
+                type="button"
+              >
+                <RotateCcw size={16} />
+                重置
+              </button>
+            </nav>
           </div>
-          <button
-            className="inline-flex items-center gap-2 rounded-md border border-[#cfd7e3] bg-white px-4 py-2 text-sm font-medium text-[#344054] transition hover:bg-[#f2f5f8]"
-            onClick={reset}
-            type="button"
-          >
-            <RotateCcw size={16} />
-            {copy.reset}
-          </button>
         </div>
       </header>
 
+      {activeView === "analyze" ? renderAnalyzeView() : null}
+      {activeView === "dashboard" ? renderDashboardView() : null}
+      {activeView === "history" ? renderHistoryView() : null}
+      {activeView === "rules" ? renderRulesView() : null}
+    </main>
+  );
+
+  function renderAnalyzeView() {
+    const factors = result?.text?.factors ?? [];
+    const evidenceTerms = result?.text?.evidence_terms ?? [];
+    const emotionDrivers = result?.emotion?.pressure_drivers ?? [];
+    const pressureProbabilities = result?.emotion?.pressure_probabilities ?? {};
+
+    return (
       <section className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[410px_1fr]">
         <aside className="space-y-5">
-          <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center gap-3">
-              <FileAudio size={20} />
-              <h2 className="text-lg font-semibold">{copy.audio}</h2>
-            </div>
-
+          <Panel icon={<FileAudio size={20} />} title="音频">
             <input
               id="callguard-audio-upload"
               ref={inputRef}
@@ -487,9 +685,8 @@ export default function Home() {
               onChange={(event) => selectFile(event.target.files?.[0] ?? null)}
               type="file"
             />
-
             <label
-              className="grid min-h-44 w-full cursor-pointer place-items-center rounded-md border border-dashed border-[#98a2b3] bg-[#fbfcfe] p-6 text-center transition hover:border-[#0f766e] hover:bg-[#f3fbf9] focus-within:border-[#0f766e] focus-within:bg-white"
+              className="grid min-h-44 w-full cursor-pointer place-items-center rounded-md border border-dashed border-[#98a2b3] bg-[#fbfcfe] p-6 text-center transition hover:border-[#0f766e] hover:bg-[#f3fbf9]"
               htmlFor="callguard-audio-upload"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
@@ -508,13 +705,13 @@ export default function Home() {
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-md border border-[#cfd7e3] bg-white px-3 py-2.5 text-sm font-medium text-[#344054] transition hover:bg-[#f2f5f8] disabled:cursor-not-allowed disabled:bg-[#f2f5f8] disabled:text-[#98a2b3]"
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-[#cfd7e3] bg-white px-3 py-2.5 text-sm font-medium text-[#344054] transition hover:bg-[#f2f5f8] disabled:cursor-not-allowed disabled:bg-[#f2f5f8]"
                 disabled={isRecording || isLoading}
                 onClick={startRecording}
                 type="button"
               >
                 <Mic size={16} />
-                {copy.recordStart}
+                开始录音
               </button>
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-md border border-[#fecdd3] bg-[#fff1f2] px-3 py-2.5 text-sm font-medium text-[#be123c] transition hover:bg-[#ffe4e6] disabled:cursor-not-allowed disabled:border-[#dde2ea] disabled:bg-[#f2f5f8] disabled:text-[#98a2b3]"
@@ -523,23 +720,19 @@ export default function Home() {
                 type="button"
               >
                 <Square size={15} />
-                {copy.recordStop}
+                停止录音
               </button>
             </div>
 
             {isRecording ? (
               <div className="mt-3 flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                <span>{copy.recording}</span>
+                <span>正在录音</span>
                 <span className="font-semibold">{formatDuration(recordingSeconds)}</span>
               </div>
             ) : null}
-          </section>
+          </Panel>
 
-          <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <PlayCircle size={20} />
-              <h2 className="text-lg font-semibold">{copy.demoSamples}</h2>
-            </div>
+          <Panel icon={<PlayCircle size={20} />} title="演示样例">
             <div className="space-y-2">
               {demoSamples.map((sample) => (
                 <button
@@ -563,30 +756,26 @@ export default function Home() {
                     </span>
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-xs text-[#667085]">
-                    <span>{sample.has_audio ? sample.audio_file_name : copy.textOnly}</span>
-                    {loadingDemoId === sample.id ? <span>{copy.loadingSample}</span> : null}
+                    <span>{sample.has_audio ? sample.audio_file_name : "纯文本"}</span>
+                    {loadingDemoId === sample.id ? <span>载入中</span> : null}
                   </div>
                 </button>
               ))}
             </div>
-          </section>
+          </Panel>
 
-          <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <MessageSquareText size={20} />
-              <h2 className="text-lg font-semibold">{copy.transcript}</h2>
-            </div>
+          <Panel icon={<MessageSquareText size={20} />} title="通话文本">
             <textarea
               className="min-h-36 w-full resize-y rounded-md border border-[#cfd7e3] bg-[#fbfcfe] p-3 text-sm leading-6 outline-none transition placeholder:text-[#98a2b3] focus:border-[#0f766e] focus:bg-white"
               onChange={(event) => {
                 setTranscript(event.target.value);
                 setResult(null);
+                setSavedNotice(null);
                 setError(null);
               }}
-              placeholder={copy.placeholder}
+              placeholder="可选：输入或修正通话文本。留空时系统会尝试自动转写音频。"
               value={transcript}
             />
-
             <button
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0b615a] disabled:cursor-not-allowed disabled:bg-[#98a2b3]"
               disabled={(!file && !transcript.trim()) || isLoading}
@@ -594,21 +783,21 @@ export default function Home() {
               type="button"
             >
               {isLoading ? <LoaderCircle className="animate-spin" size={17} /> : <Upload size={17} />}
-              {copy.analyze}
+              分析通话
             </button>
-
+            {savedNotice ? (
+              <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                {savedNotice}
+              </div>
+            ) : null}
             {error ? (
               <div className="mt-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
                 {error}
               </div>
             ) : null}
-          </section>
+          </Panel>
 
-          <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <Activity size={20} />
-              <h2 className="text-lg font-semibold">{copy.signal}</h2>
-            </div>
+          <Panel icon={<Activity size={20} />} title="信号概览">
             <div className="flex h-24 items-end gap-1 rounded-md bg-[#f2f5f8] px-3 py-4">
               {signalBars.map((height, index) => (
                 <div
@@ -618,86 +807,56 @@ export default function Home() {
                 />
               ))}
             </div>
-          </section>
+          </Panel>
         </aside>
 
         <div className="space-y-6">
           <section className="grid gap-4 md:grid-cols-4">
-            <Metric icon={<Gauge size={18} />} label={copy.fusionRisk} unit="/100" value={result ? String(riskPercent) : "--"} />
-            <Metric icon={<AudioWaveform size={18} />} label={copy.audioRisk} unit="/100" value={result?.audio ? String(audioPercent) : "--"} />
-            <Metric icon={<MessageSquareText size={18} />} label={copy.textRisk} unit="/100" value={result?.text ? String(textPercent) : "--"} />
-            <Metric icon={<HeartPulse size={18} />} label={copy.stressRisk} unit="/100" value={result?.emotion ? String(stressPercent) : "--"} />
+            <Metric icon={<Gauge size={18} />} label="融合风险" unit="/100" value={result ? String(riskPercent) : "--"} />
+            <Metric icon={<AudioWaveform size={18} />} label="音频风险" unit="/100" value={result?.audio ? String(audioPercent) : "--"} />
+            <Metric icon={<MessageSquareText size={18} />} label="文本风险" unit="/100" value={result?.text ? String(textPercent) : "--"} />
+            <Metric icon={<HeartPulse size={18} />} label="压力信号" unit="/100" value={result?.emotion ? String(stressPercent) : "--"} />
           </section>
 
-          <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
+          <Panel title="综合判断">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm text-[#667085]">Fusion risk</p>
-                <h2 className="text-lg font-semibold">{copy.overall}</h2>
+                <h2 className="text-lg font-semibold">综合判断</h2>
               </div>
-              <span
-                className={`rounded-md border px-3 py-1 text-sm font-medium ${
-                  result ? levelTone[result.risk_level] : "border-[#dde2ea] bg-[#f2f5f8] text-[#667085]"
-                }`}
-              >
-                {result ? levelCopy[result.risk_level] : copy.waiting}
-              </span>
+              <RiskBadge level={result?.risk_level} fallback="等待分析" />
             </div>
-
             <div className="grid gap-6 lg:grid-cols-[1fr_290px]">
               <div>
-                <div className="mb-3 flex items-center justify-between text-sm">
-                  <span className="text-[#667085]">Risk score</span>
-                  <span className="font-semibold">{result ? `${riskPercent}%` : "--"}</span>
-                </div>
-                <div className="h-4 overflow-hidden rounded-full bg-[#e7ecf2]">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      result?.risk_level === "high"
-                        ? "bg-[#e11d48]"
-                        : result?.risk_level === "medium"
-                          ? "bg-[#d97706]"
-                          : result?.risk_level === "low"
-                            ? "bg-[#0284c7]"
-                            : "bg-[#0f766e]"
-                    }`}
-                    style={{ width: `${result ? riskPercent : 0}%` }}
-                  />
-                </div>
-
+                <ProgressBar value={result ? riskPercent : 0} level={result?.risk_level ?? "normal"} />
                 <div className="mt-5 rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
-                  <p className="text-sm text-[#667085]">{copy.suggestion}</p>
+                  <p className="text-sm text-[#667085]">建议</p>
                   <p className="mt-2 font-medium leading-7">
-                    {result?.suggestion ?? copy.chooseToStart}
+                    {result?.suggestion ?? "上传音频或输入通话文本后开始分析。"}
                   </p>
                 </div>
               </div>
-
               <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
                 <p className="text-sm text-[#667085]">Prediction</p>
                 <p className="mt-2 text-2xl font-semibold">
-                  {result ? (result.prediction === "fraud" ? copy.riskCall : copy.normalCall) : "--"}
+                  {result ? (result.prediction === "fraud" ? "风险通话" : "正常通话") : "--"}
                 </p>
                 <div className="mt-5 space-y-3 text-sm text-[#475467]">
                   <InfoRow label="Transcript" value={result?.transcript_source ?? "--"} />
-                <InfoRow label="Audio weight" value={result ? `${Math.round(result.fusion_weights.audio * 100)}%` : "--"} />
-                <InfoRow label="Text weight" value={result ? `${Math.round(result.fusion_weights.text * 100)}%` : "--"} />
-                <InfoRow label={copy.pressureAuxiliary} value={result?.emotion ? `${stressPercent}/100` : "--"} />
-                <InfoRow label="Text model" value={result?.text?.model ?? "--"} />
-                <InfoRow label={copy.adaptiveFusion} value={result?.fusion_method ?? "--"} />
+                  <InfoRow label="Audio weight" value={result ? `${Math.round(result.fusion_weights.audio * 100)}%` : "--"} />
+                  <InfoRow label="Text weight" value={result ? `${Math.round(result.fusion_weights.text * 100)}%` : "--"} />
+                  <InfoRow label="Pressure" value={result?.emotion ? `${stressPercent}/100` : "--"} />
+                  <InfoRow label="Text model" value={result?.text?.model ?? "--"} />
+                  <InfoRow label="Fusion" value={result?.fusion_method ?? "--"} />
                 </div>
               </div>
             </div>
-          </section>
+          </Panel>
 
-          <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <MessageSquareText size={20} />
-              <h2 className="text-lg font-semibold">{copy.autoTranscript}</h2>
-            </div>
+          <Panel icon={<MessageSquareText size={20} />} title="自动转写">
             <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
               <p className="min-h-16 text-sm leading-7 text-[#344054]">
-                {result?.transcript || copy.chooseToStart}
+                {result?.transcript || "上传音频或输入通话文本后开始分析。"}
               </p>
               <div className="mt-4 grid gap-3 text-sm text-[#475467] md:grid-cols-3">
                 <InfoRow label="Source" value={result?.transcript_source ?? "--"} />
@@ -708,23 +867,9 @@ export default function Home() {
                 />
               </div>
             </div>
-          </section>
+          </Panel>
 
-          <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <HeartPulse size={20} />
-                <h2 className="text-lg font-semibold">{copy.emotionAssist}</h2>
-              </div>
-              <span
-                className={`rounded-md border px-3 py-1 text-sm font-medium ${
-                  result?.emotion ? levelTone[result.emotion.pressure_level] : "border-[#dde2ea] bg-[#f2f5f8] text-[#667085]"
-                }`}
-              >
-                {result?.emotion ? levelCopy[result.emotion.pressure_level] : copy.waiting}
-              </span>
-            </div>
-
+          <Panel icon={<HeartPulse size={20} />} title="语音压力/情绪辅助">
             <div className="grid gap-6 lg:grid-cols-[230px_1fr]">
               <div>
                 <p className="text-sm text-[#667085]">Pressure score</p>
@@ -732,49 +877,32 @@ export default function Home() {
                   <span className="text-5xl font-semibold">{result?.emotion ? stressPercent : "--"}</span>
                   <span className="pb-1 text-sm text-[#667085]">/100</span>
                 </div>
-                <div className="mt-4 h-3 overflow-hidden rounded-full bg-[#e7ecf2]">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      result?.emotion?.pressure_level === "high"
-                        ? "bg-[#e11d48]"
-                        : result?.emotion?.pressure_level === "medium"
-                          ? "bg-[#d97706]"
-                          : result?.emotion?.pressure_level === "low"
-                            ? "bg-[#0284c7]"
-                            : "bg-[#0f766e]"
-                    }`}
-                    style={{ width: `${result?.emotion ? stressPercent : 0}%` }}
-                  />
+                <div className="mt-4">
+                  <ProgressBar value={result?.emotion ? stressPercent : 0} level={result?.emotion?.pressure_level ?? "normal"} compact />
                 </div>
               </div>
-
               <div className="space-y-5">
                 <div className="grid gap-3 text-sm text-[#475467] md:grid-cols-3">
-                  <InfoRow label={copy.primaryEmotion} value={result?.emotion?.primary_emotion ?? "--"} />
-                  <InfoRow label={copy.emotionConfidence} value={result?.emotion ? `${emotionConfidencePercent}%` : "--"} />
-                  <InfoRow label={copy.pressureModel} value={result?.emotion?.model ?? "--"} />
+                  <InfoRow label="主要情绪" value={result?.emotion?.primary_emotion ?? "--"} />
+                  <InfoRow label="情绪置信度" value={result?.emotion ? `${Math.round(result.emotion.emotion_confidence * 100)}%` : "--"} />
+                  <InfoRow label="压力模型" value={result?.emotion?.model ?? "--"} />
                 </div>
-
-                <div>
-                  <p className="mb-3 text-sm font-medium text-[#344054]">{copy.pressureDrivers}</p>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {emotionDrivers.length > 0 ? (
-                      emotionDrivers.map((driver) => (
-                        <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3" key={driver.emotion}>
-                          <p className="font-medium">{driver.emotion}</p>
-                          <p className="mt-1 text-sm text-[#667085]">
-                            {Math.round(driver.probability * 100)}% / {Math.round(driver.contribution * 100)}/100
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3 text-sm text-[#667085]">
-                        {copy.chooseToStart}
+                <div className="grid gap-3 md:grid-cols-3">
+                  {emotionDrivers.length > 0 ? (
+                    emotionDrivers.map((driver) => (
+                      <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3" key={driver.emotion}>
+                        <p className="font-medium">{driver.emotion}</p>
+                        <p className="mt-1 text-sm text-[#667085]">
+                          {Math.round(driver.probability * 100)}% / {Math.round(driver.contribution * 100)}/100
+                        </p>
                       </div>
-                    )}
-                  </div>
+                    ))
+                  ) : (
+                    <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3 text-sm text-[#667085]">
+                      暂无压力来源。
+                    </div>
+                  )}
                 </div>
-
                 <div className="grid gap-3 md:grid-cols-3">
                   {Object.entries(pressureProbabilities).map(([label, value]) => (
                     <div className="rounded-md bg-[#f2f5f8] p-3 text-sm text-[#475467]" key={label}>
@@ -783,22 +911,12 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-
-                {result?.emotion ? (
-                  <p className="rounded-md bg-[#f2f5f8] p-3 text-sm leading-6 text-[#475467]">
-                    {result.emotion.suggestion}
-                  </p>
-                ) : null}
               </div>
             </div>
-          </section>
+          </Panel>
 
           <section className="grid gap-6 lg:grid-cols-[1fr_340px]">
-            <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-3">
-                <AlertTriangle size={20} />
-                <h2 className="text-lg font-semibold">{copy.factors}</h2>
-              </div>
+            <Panel icon={<AlertTriangle size={20} />} title="风险因素">
               <div className="grid gap-3 md:grid-cols-2">
                 {factors.length > 0 ? (
                   factors.map((factor) => (
@@ -809,13 +927,13 @@ export default function Home() {
                   ))
                 ) : (
                   <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3 text-sm text-[#667085]">
-                    {copy.noFactors}
+                    暂无文本风险因素。
                   </div>
                 )}
               </div>
               {evidenceTerms.length > 0 ? (
                 <div className="mt-5 rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
-                  <p className="text-sm font-medium text-[#344054]">{copy.modelEvidence}</p>
+                  <p className="text-sm font-medium text-[#344054]">模型证据</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {evidenceTerms.map((term) => (
                       <span className="rounded-md bg-[#e6f4f1] px-2.5 py-1 text-sm font-medium text-[#0f766e]" key={term}>
@@ -825,45 +943,16 @@ export default function Home() {
                   </div>
                 </div>
               ) : null}
-            </section>
+            </Panel>
 
-            <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-3">
-                <ShieldCheck size={20} />
-                <h2 className="text-lg font-semibold">{copy.modelState}</h2>
-              </div>
+            <Panel icon={<Database size={20} />} title="模型状态">
               <div className="space-y-3 text-sm text-[#475467]">
                 <InfoRow label="Audio" value={result?.audio ? `${audioPercent}/100` : "--"} />
                 <InfoRow label="Pressure" value={result?.emotion ? `${stressPercent}/100` : "--"} />
-                <InfoRow label="Emotion" value={result?.emotion?.primary_emotion ?? "--"} />
                 <InfoRow label="Text" value={result?.text ? `${textPercent}/100` : "--"} />
-                <InfoRow label="Text ML" value={textModelPercent !== null ? `${textModelPercent}/100` : "--"} />
-                <InfoRow label={copy.ruleSignal} value={rulePercent !== null ? `${rulePercent}/100` : "--"} />
-                <InfoRow
-                  label="Audio confidence"
-                  value={
-                    result?.fusion_diagnostics
-                      ? `${Math.round(result.fusion_diagnostics.audio_confidence * 100)}%`
-                      : "--"
-                  }
-                />
-                <InfoRow
-                  label="Text confidence"
-                  value={
-                    result?.fusion_diagnostics
-                      ? `${Math.round(result.fusion_diagnostics.text_confidence * 100)}%`
-                      : "--"
-                  }
-                />
-                <InfoRow
-                  label={copy.modalityAgreement}
-                  value={
-                    result?.fusion_diagnostics
-                      ? `${Math.round(result.fusion_diagnostics.agreement * 100)}%`
-                      : "--"
-                  }
-                />
+                <InfoRow label="Rule" value={result?.text ? `${Math.round(result.text.rule_score * 100)}/100` : "--"} />
                 <InfoRow label="Label" value={result ? levelCopy[result.risk_level] : "--"} />
+                <InfoRow label="Record" value={result?.record_id ? `#${result.record_id}` : "--"} />
               </div>
               <div className="mt-5 space-y-3">
                 {(result?.notes ?? ["Audio baseline ready.", "ASR and text ML ready."]).map((item) => (
@@ -872,11 +961,280 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            </section>
+            </Panel>
           </section>
         </div>
       </section>
-    </main>
+    );
+  }
+
+  function renderDashboardView() {
+    const data = analytics;
+    const distribution: Array<{ key: RiskLevel; label: string; count: number }> = ([
+      "high",
+      "medium",
+      "low",
+      "normal"
+    ] as RiskLevel[]).map((key) => ({
+      key,
+      label: levelCopy[key],
+      count: data?.risk_level_counts?.[key] ?? 0
+    }));
+    const maxCount = Math.max(1, ...distribution.map((item) => item.count));
+
+    return (
+      <section className="mx-auto max-w-7xl px-6 py-8">
+        <ViewHeader title="数据看板" description="从本地历史记录聚合风险分布、近期分析和高频风险关键词。" />
+        {panelError ? <ErrorBox message={panelError} /> : null}
+        <section className="grid gap-4 md:grid-cols-4">
+          <Metric icon={<Database size={18} />} label="总分析次数" unit="次" value={String(data?.total_calls ?? 0)} />
+          <Metric icon={<AlertTriangle size={18} />} label="高风险次数" unit="次" value={String(data?.high_risk_calls ?? 0)} />
+          <Metric icon={<Gauge size={18} />} label="平均风险分" unit="/100" value={String(Math.round((data?.average_risk_score ?? 0) * 100))} />
+          <Metric icon={<ShieldCheck size={18} />} label="最近记录" unit="条" value={String(data?.recent_calls.length ?? 0)} />
+        </section>
+
+        {(data?.total_calls ?? 0) === 0 ? (
+          <EmptyState title="还没有历史数据" description="先回到分析台，点击 demo 或上传音频生成一次分析记录。" />
+        ) : (
+          <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
+            <Panel icon={<BarChart3 size={20} />} title="风险等级分布">
+              <div className="space-y-4">
+                {distribution.map((item) => (
+                  <div key={item.key}>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="font-medium">{item.label}</span>
+                      <span className="text-[#667085]">{item.count} 次</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-[#e7ecf2]">
+                      <div
+                        className={`h-full rounded-full ${
+                          item.key === "high"
+                            ? "bg-[#e11d48]"
+                            : item.key === "medium"
+                              ? "bg-[#d97706]"
+                              : item.key === "low"
+                                ? "bg-[#0284c7]"
+                                : "bg-[#0f766e]"
+                        }`}
+                        style={{ width: `${(item.count / maxCount) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel icon={<Search size={20} />} title="Top 风险关键词">
+              <div className="space-y-2">
+                {(data?.top_keywords ?? []).length > 0 ? (
+                  data?.top_keywords.map((item) => (
+                    <div className="flex items-center justify-between rounded-md bg-[#f2f5f8] px-3 py-2 text-sm" key={item.keyword}>
+                      <span className="font-medium">{item.keyword}</span>
+                      <span className="text-[#667085]">{item.count} 次</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-[#667085]">暂无命中关键词。</p>
+                )}
+              </div>
+            </Panel>
+
+            <Panel icon={<History size={20} />} title="最近分析">
+              <RecordTable records={data?.recent_calls ?? []} onOpen={(id) => {
+                setActiveView("history");
+                void loadRecordDetail(id);
+              }} onDelete={(id) => void deleteRecord(id)} />
+            </Panel>
+          </section>
+        )}
+      </section>
+    );
+  }
+
+  function renderHistoryView() {
+    return (
+      <section className="mx-auto max-w-7xl px-6 py-8">
+        <ViewHeader title="历史记录" description={`本地共保存 ${recordsTotal} 条分析记录，可回看详情或删除。`} />
+        {panelError ? <ErrorBox message={panelError} /> : null}
+        <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
+          <Panel icon={<History size={20} />} title="记录列表">
+            {records.length === 0 ? (
+              <EmptyState title="暂无历史记录" description="完成一次文本或音频分析后，记录会自动出现在这里。" />
+            ) : (
+              <RecordTable records={records} onOpen={(id) => void loadRecordDetail(id)} onDelete={(id) => void deleteRecord(id)} />
+            )}
+          </Panel>
+
+          <Panel icon={<MessageSquareText size={20} />} title="记录详情">
+            {selectedRecord ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <RiskBadge level={selectedRecord.risk_level} />
+                  <span className="text-sm text-[#667085]">{formatDate(selectedRecord.created_at)}</span>
+                </div>
+                <div className="grid gap-3 text-sm text-[#475467]">
+                  <InfoRow label="编号" value={`#${selectedRecord.id}`} />
+                  <InfoRow label="输入来源" value={inputTypeCopy(selectedRecord.input_type)} />
+                  <InfoRow label="预测" value={selectedRecord.prediction === "fraud" ? "风险通话" : "正常通话"} />
+                  <InfoRow label="风险分" value={`${Math.round(selectedRecord.risk_score * 100)}/100`} />
+                  <InfoRow label="压力分" value={selectedRecord.pressure_score === null ? "--" : `${Math.round(selectedRecord.pressure_score * 100)}/100`} />
+                </div>
+                <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
+                  <p className="mb-2 text-sm font-medium text-[#344054]">通话文本</p>
+                  <p className="max-h-56 overflow-auto text-sm leading-7 text-[#475467]">{selectedRecord.transcript || "无文本"}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedRecord.risk_factors.length > 0 ? selectedRecord.risk_factors.map((factor) => (
+                    <span className="rounded-md bg-[#e6f4f1] px-2.5 py-1 text-sm font-medium text-[#0f766e]" key={`${factor.group}-${factor.keyword}`}>
+                      {factor.keyword}
+                    </span>
+                  )) : <span className="text-sm text-[#667085]">暂无风险关键词。</span>}
+                </div>
+              </div>
+            ) : (
+              <EmptyState title="选择一条记录" description="点击左侧记录的“详情”，这里会展示完整分析摘要。" />
+            )}
+          </Panel>
+        </div>
+      </section>
+    );
+  }
+
+  function renderRulesView() {
+    return (
+      <section className="mx-auto max-w-7xl px-6 py-8">
+        <ViewHeader title="规则管理" description="管理文本风险关键词。默认规则可停用，自定义规则可删除。" />
+        {panelError ? <ErrorBox message={panelError} /> : null}
+        <div className="grid gap-6 lg:grid-cols-[390px_1fr]">
+          <Panel icon={<Plus size={20} />} title="新增关键词规则">
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-[#344054]">
+                规则组
+                <input
+                  className="mt-2 h-10 w-full rounded-md border border-[#cfd7e3] bg-[#fbfcfe] px-3 outline-none focus:border-[#0f766e]"
+                  onChange={(event) => setRuleForm((value) => ({ ...value, group: event.target.value }))}
+                  value={ruleForm.group}
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#344054]">
+                关键词
+                <input
+                  className="mt-2 h-10 w-full rounded-md border border-[#cfd7e3] bg-[#fbfcfe] px-3 outline-none focus:border-[#0f766e]"
+                  onChange={(event) => setRuleForm((value) => ({ ...value, keyword: event.target.value }))}
+                  placeholder="例如：安全账户"
+                  value={ruleForm.keyword}
+                />
+              </label>
+              <label className="block text-sm font-medium text-[#344054]">
+                权重
+                <input
+                  className="mt-2 h-10 w-full rounded-md border border-[#cfd7e3] bg-[#fbfcfe] px-3 outline-none focus:border-[#0f766e]"
+                  onChange={(event) => setRuleForm((value) => ({ ...value, weight: event.target.value }))}
+                  step="0.1"
+                  type="number"
+                  value={ruleForm.weight}
+                />
+              </label>
+              <button
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#0f766e] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#0b615a]"
+                onClick={createRule}
+                type="button"
+              >
+                <Plus size={16} />
+                新增规则
+              </button>
+              <button
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-[#cfd7e3] bg-white px-4 py-3 text-sm font-semibold text-[#344054] transition hover:bg-[#f2f5f8]"
+                onClick={resetDefaultRules}
+                type="button"
+              >
+                <RotateCcw size={16} />
+                恢复默认规则
+              </button>
+            </div>
+          </Panel>
+
+          <Panel icon={<SlidersHorizontal size={20} />} title="关键词规则">
+            <div className="mb-4 flex items-center gap-2 rounded-md border border-[#cfd7e3] bg-[#fbfcfe] px-3">
+              <Search className="text-[#667085]" size={16} />
+              <input
+                className="h-10 flex-1 bg-transparent text-sm outline-none placeholder:text-[#98a2b3]"
+                onChange={(event) => setRuleFilter(event.target.value)}
+                placeholder="搜索规则组、关键词或来源"
+                value={ruleFilter}
+              />
+            </div>
+            <div className="max-h-[620px] overflow-auto rounded-md border border-[#dde2ea]">
+              <table className="w-full min-w-[720px] border-collapse text-sm">
+                <thead className="sticky top-0 bg-[#f2f5f8] text-left text-[#667085]">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">规则组</th>
+                    <th className="px-3 py-2 font-medium">关键词</th>
+                    <th className="px-3 py-2 font-medium">来源</th>
+                    <th className="px-3 py-2 font-medium">状态</th>
+                    <th className="px-3 py-2 text-right font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRules.map((rule) => (
+                    <tr className="border-t border-[#dde2ea]" key={rule.id}>
+                      <td className="px-3 py-2 text-[#475467]">{rule.group}</td>
+                      <td className="px-3 py-2 font-medium">{rule.keyword}</td>
+                      <td className="px-3 py-2 text-[#667085]">{rule.source === "default" ? "默认" : "自定义"}</td>
+                      <td className="px-3 py-2">
+                        <span className={`rounded-md px-2 py-1 text-xs font-medium ${rule.enabled ? "bg-emerald-50 text-emerald-700" : "bg-[#f2f5f8] text-[#667085]"}`}>
+                          {rule.enabled ? "启用" : "停用"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          className="mr-2 rounded-md border border-[#cfd7e3] px-2.5 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f2f5f8]"
+                          onClick={() => void toggleRule(rule.id)}
+                          type="button"
+                        >
+                          {rule.enabled ? "停用" : "启用"}
+                        </button>
+                        <button
+                          className="rounded-md border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-[#dde2ea] disabled:text-[#98a2b3]"
+                          disabled={rule.source !== "custom"}
+                          onClick={() => void deleteRule(rule.id)}
+                          type="button"
+                        >
+                          删除
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </div>
+      </section>
+    );
+  }
+}
+
+function Panel({ icon, title, children }: { icon?: ReactNode; title?: string; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-[#dde2ea] bg-white p-5 shadow-sm">
+      {title ? (
+        <div className="mb-4 flex items-center gap-3">
+          {icon}
+          <h2 className="text-lg font-semibold">{title}</h2>
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+function ViewHeader({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="mb-6">
+      <h2 className="text-2xl font-semibold">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-[#667085]">{description}</p>
+    </div>
   );
 }
 
@@ -909,9 +1267,144 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <span className="text-[#667085]">{label}</span>
-      <span className="max-w-40 break-words text-right font-medium text-[#171b22]">{value}</span>
+      <span className="max-w-44 break-words text-right font-medium text-[#171b22]">{value}</span>
     </div>
   );
+}
+
+function RiskBadge({ level, fallback }: { level?: RiskLevel | null; fallback?: string }) {
+  return (
+    <span
+      className={`rounded-md border px-3 py-1 text-sm font-medium ${
+        level ? levelTone[level] : "border-[#dde2ea] bg-[#f2f5f8] text-[#667085]"
+      }`}
+    >
+      {level ? levelCopy[level] : fallback ?? "--"}
+    </span>
+  );
+}
+
+function ProgressBar({ value, level, compact = false }: { value: number; level: RiskLevel; compact?: boolean }) {
+  return (
+    <div>
+      {!compact ? (
+        <div className="mb-3 flex items-center justify-between text-sm">
+          <span className="text-[#667085]">Risk score</span>
+          <span className="font-semibold">{value}%</span>
+        </div>
+      ) : null}
+      <div className={`${compact ? "h-3" : "h-4"} overflow-hidden rounded-full bg-[#e7ecf2]`}>
+        <div
+          className={`h-full rounded-full transition-all ${
+            level === "high"
+              ? "bg-[#e11d48]"
+              : level === "medium"
+                ? "bg-[#d97706]"
+                : level === "low"
+                  ? "bg-[#0284c7]"
+                  : "bg-[#0f766e]"
+          }`}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RecordTable({
+  records,
+  onOpen,
+  onDelete
+}: {
+  records: CallRecordSummary[];
+  onOpen: (id: number) => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <div className="overflow-auto rounded-md border border-[#dde2ea]">
+      <table className="w-full min-w-[760px] border-collapse text-sm">
+        <thead className="bg-[#f2f5f8] text-left text-[#667085]">
+          <tr>
+            <th className="px-3 py-2 font-medium">时间</th>
+            <th className="px-3 py-2 font-medium">风险</th>
+            <th className="px-3 py-2 font-medium">来源</th>
+            <th className="px-3 py-2 font-medium">文本摘要</th>
+            <th className="px-3 py-2 text-right font-medium">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {records.map((record) => (
+            <tr className="border-t border-[#dde2ea]" key={record.id}>
+              <td className="whitespace-nowrap px-3 py-2 text-[#667085]">{formatDate(record.created_at)}</td>
+              <td className="px-3 py-2">
+                <RiskBadge level={record.risk_level} />
+              </td>
+              <td className="px-3 py-2 text-[#475467]">{inputTypeCopy(record.input_type)}</td>
+              <td className="max-w-[300px] truncate px-3 py-2 text-[#344054]">
+                {record.transcript_preview || record.file_name || "无文本"}
+              </td>
+              <td className="whitespace-nowrap px-3 py-2 text-right">
+                <button
+                  className="mr-2 rounded-md border border-[#cfd7e3] px-2.5 py-1.5 text-xs font-medium text-[#344054] hover:bg-[#f2f5f8]"
+                  onClick={() => onOpen(record.id)}
+                  type="button"
+                >
+                  详情
+                </button>
+                <button
+                  className="rounded-md border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                  onClick={() => onDelete(record.id)}
+                  type="button"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-[#cfd7e3] bg-white p-8 text-center">
+      <p className="font-semibold">{title}</p>
+      <p className="mt-2 text-sm text-[#667085]">{description}</p>
+    </div>
+  );
+}
+
+function ErrorBox({ message }: { message: string }) {
+  return (
+    <div className="mb-5 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+      {message}
+    </div>
+  );
+}
+
+function inputTypeCopy(value: string) {
+  if (value === "audio_text") {
+    return "音频+文本";
+  }
+  if (value === "audio") {
+    return "音频";
+  }
+  return "文本";
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function formatDuration(seconds: number) {

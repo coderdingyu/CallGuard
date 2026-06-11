@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 import sys
 import tempfile
 from functools import lru_cache
 from pathlib import Path
 
 import joblib
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -25,7 +26,7 @@ from callguard_ml.emotion_model import (  # noqa: E402
     analyze_emotion_model,
     load_emotion_model as load_emotion_model_file,
 )
-from callguard_ml.risk_rules import find_risk_keywords, score_text_rules  # noqa: E402
+from callguard_ml.risk_rules import DEFAULT_KEYWORD_GROUPS, find_risk_keywords, score_text_rules  # noqa: E402
 from callguard_ml.text_model import analyze_text_model, load_text_model as load_text_model_file  # noqa: E402
 from callguard_ml.text_normalization import normalize_chinese_text, simplify_chinese_text  # noqa: E402
 
@@ -35,12 +36,34 @@ from .schemas import (  # noqa: E402
     AnalyzeEmotionResponse,
     AnalyzeTextRequest,
     AnalyzeTextResponse,
+    AnalyticsSummaryResponse,
+    CallListResponse,
+    CallRecordDetail,
     DemoSampleResponse,
+    DeleteResponse,
     EmotionPressureDriver,
     FusionDiagnostics,
     RiskFactor,
+    RuleCreateRequest,
+    RuleResponse,
+    RuleUpdateRequest,
     TranscriptionResponse,
     TranscriptionSegment,
+)
+from .storage import (  # noqa: E402
+    analytics_summary,
+    create_call_record,
+    create_rule,
+    delete_call_record,
+    delete_custom_rule,
+    get_call_record,
+    get_enabled_keyword_groups,
+    init_db,
+    list_call_records,
+    list_rules,
+    reset_default_rules,
+    toggle_rule,
+    update_rule,
 )
 
 AUDIO_ROOTS = {
@@ -180,11 +203,23 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:3002",
+        "http://127.0.0.1:3002",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db(DEFAULT_KEYWORD_GROUPS)
 
 
 @app.get("/health")
@@ -218,6 +253,91 @@ def get_demo_sample_audio(sample_id: str) -> FileResponse:
 
     media_type = "audio/wav" if path.suffix.lower() == ".wav" else "audio/mpeg"
     return FileResponse(path, media_type=media_type, filename=path.name)
+
+
+@app.get("/api/calls", response_model=CallListResponse)
+def get_calls(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> CallListResponse:
+    records, total = list_call_records(limit=limit, offset=offset)
+    return CallListResponse(records=records, total=total, limit=limit, offset=offset)
+
+
+@app.get("/api/calls/{record_id}", response_model=CallRecordDetail)
+def get_call(record_id: int) -> CallRecordDetail:
+    try:
+        return CallRecordDetail(**get_call_record(record_id))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Call record not found: {record_id}") from exc
+
+
+@app.delete("/api/calls/{record_id}", response_model=DeleteResponse)
+def delete_call(record_id: int) -> DeleteResponse:
+    deleted = delete_call_record(record_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Call record not found: {record_id}")
+    return DeleteResponse(ok=True, message="Call record deleted.")
+
+
+@app.get("/api/analytics/summary", response_model=AnalyticsSummaryResponse)
+def get_analytics_summary() -> AnalyticsSummaryResponse:
+    return AnalyticsSummaryResponse(**analytics_summary())
+
+
+@app.get("/api/rules", response_model=list[RuleResponse])
+def get_rules() -> list[RuleResponse]:
+    return [RuleResponse(**rule) for rule in list_rules()]
+
+
+@app.post("/api/rules", response_model=RuleResponse)
+def post_rule(request: RuleCreateRequest) -> RuleResponse:
+    try:
+        return RuleResponse(
+            **create_rule(
+                group=request.group,
+                keyword=request.keyword,
+                weight=request.weight,
+                enabled=request.enabled,
+            )
+        )
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(status_code=409, detail="Rule already exists.") from exc
+
+
+@app.put("/api/rules/{rule_id}", response_model=RuleResponse)
+def put_rule(rule_id: int, request: RuleUpdateRequest) -> RuleResponse:
+    try:
+        values = request.model_dump(exclude_unset=True)
+        return RuleResponse(**update_rule(rule_id, values))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Rule not found: {rule_id}") from exc
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(status_code=409, detail="Rule already exists.") from exc
+
+
+@app.patch("/api/rules/{rule_id}/toggle", response_model=RuleResponse)
+def patch_rule_toggle(rule_id: int) -> RuleResponse:
+    try:
+        return RuleResponse(**toggle_rule(rule_id))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Rule not found: {rule_id}") from exc
+
+
+@app.delete("/api/rules/{rule_id}", response_model=DeleteResponse)
+def delete_rule(rule_id: int) -> DeleteResponse:
+    try:
+        delete_custom_rule(rule_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"Rule not found: {rule_id}") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return DeleteResponse(ok=True, message="Rule deleted.")
+
+
+@app.post("/api/rules/reset-defaults", response_model=list[RuleResponse])
+def post_rules_reset_defaults() -> list[RuleResponse]:
+    return [RuleResponse(**rule) for rule in reset_default_rules(DEFAULT_KEYWORD_GROUPS)]
 
 
 @app.get("/api/model/audio/status")
@@ -335,6 +455,7 @@ async def analyze_call(
     manual_transcript = transcript.strip()
     display_transcript = manual_transcript
     model_transcript = manual_transcript
+    file_name = file.filename if file is not None else None
     if file is None and not model_transcript:
         raise HTTPException(status_code=400, detail="Audio file or transcript is required.")
 
@@ -368,7 +489,7 @@ async def analyze_call(
     level = risk_level_from_score(score)
     prediction = "fraud" if score >= decision_threshold else "normal"
 
-    return AnalyzeCallResponse(
+    response = AnalyzeCallResponse(
         prediction=prediction,
         risk_score=round(score, 4),
         risk_level=level,
@@ -385,13 +506,22 @@ async def analyze_call(
         suggestion=build_fusion_suggestion(level, audio_result, text_result),
         notes=FUSION_NOTES,
     )
+    response.record_id = save_call_record_safely(
+        response=response,
+        input_type=input_type_for_analysis(file is not None, bool(manual_transcript)),
+        file_name=file_name,
+    )
+    if response.record_id is None:
+        response.notes = [*response.notes, "历史记录保存失败，但本次分析结果仍然可用。"]
+    return response
 
 
 def analyze_text_content(text: str) -> AnalyzeTextResponse:
     normalized_text = normalize_chinese_text(text)
-    matches = find_risk_keywords(normalized_text)
+    keyword_groups = load_keyword_groups_for_analysis()
+    matches = find_risk_keywords(normalized_text, keyword_groups)
     factors = [RiskFactor(group=match.group, keyword=match.keyword) for match in matches]
-    rule_score = score_text_rules(normalized_text)
+    rule_score = score_text_rules(normalized_text, keyword_groups)
     model_score: float | None = None
     model_prediction: str | None = None
     evidence_terms: list[str] = []
@@ -420,6 +550,57 @@ def analyze_text_content(text: str) -> AnalyzeTextResponse:
         rule_score=rule_score,
         evidence_terms=evidence_terms,
     )
+
+
+def load_keyword_groups_for_analysis() -> dict[str, list[str]]:
+    try:
+        groups = get_enabled_keyword_groups()
+        return groups or DEFAULT_KEYWORD_GROUPS
+    except Exception:  # noqa: BLE001
+        return DEFAULT_KEYWORD_GROUPS
+
+
+def input_type_for_analysis(has_file: bool, has_manual_text: bool) -> str:
+    if has_file and has_manual_text:
+        return "audio_text"
+    if has_file:
+        return "audio"
+    return "text"
+
+
+def save_call_record_safely(
+    response: AnalyzeCallResponse,
+    input_type: str,
+    file_name: str | None,
+) -> int | None:
+    try:
+        factors = [
+            {"group": factor.group, "keyword": factor.keyword}
+            for factor in (response.text.factors if response.text else [])
+        ]
+        model_summary = {
+            "fusion_method": response.fusion_method,
+            "audio_model": response.audio.model if response.audio else None,
+            "text_model": response.text.model if response.text else None,
+            "emotion_model": response.emotion.model if response.emotion else None,
+            "asr_model": response.asr.model if response.asr else None,
+            "decision_threshold": response.decision_threshold,
+        }
+        return create_call_record(
+            input_type=input_type,
+            file_name=file_name,
+            transcript=response.transcript,
+            prediction=response.prediction,
+            risk_score=response.risk_score,
+            risk_level=response.risk_level,
+            pressure_score=response.emotion.pressure_score if response.emotion else None,
+            pressure_level=response.emotion.pressure_level if response.emotion else None,
+            risk_factors=factors,
+            model_summary=model_summary,
+            analysis_result=response.model_dump(mode="json"),
+        )
+    except Exception:  # noqa: BLE001
+        return None
 
 
 async def save_upload_to_temp(file: UploadFile) -> Path:

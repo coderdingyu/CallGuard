@@ -94,6 +94,7 @@ class FusionDiagnostics(BaseModel):
 
 
 class AnalyzeCallResponse(BaseModel):
+    record_id: int | None = None
     prediction: str
     risk_score: float
     risk_level: str
@@ -109,3 +110,75 @@ class AnalyzeCallResponse(BaseModel):
     fusion_diagnostics: FusionDiagnostics | None
     suggestion: str
     notes: list[str]
+
+
+class RuleCreateRequest(BaseModel):
+    group: str = Field(min_length=1)
+    keyword: str = Field(min_length=1)
+    weight: float = Field(default=1.0, ge=0.1, le=5.0)
+    enabled: bool = True
+
+
+class RuleUpdateRequest(BaseModel):
+    group: str | None = Field(default=None, min_length=1)
+    keyword: str | None = Field(default=None, min_length=1)
+    weight: float | None = Field(default=None, ge=0.1, le=5.0)
+    enabled: bool | None = None
+
+
+class RuleResponse(BaseModel):
+    id: int
+    group: str
+    keyword: str
+    weight: float
+    enabled: bool
+    source: str
+    created_at: str
+    updated_at: str
+
+
+class DeleteResponse(BaseModel):
+    ok: bool
+    message: str
+
+
+class CallRecordSummary(BaseModel):
+    id: int
+    created_at: str
+    input_type: str
+    file_name: str | None
+    prediction: str
+    risk_score: float
+    risk_level: str
+    pressure_score: float | None
+    pressure_level: str | None
+    transcript_preview: str
+    risk_factors: list[RiskFactor]
+    model_summary: dict[str, str | float | int | None]
+
+
+class CallRecordDetail(CallRecordSummary):
+    transcript: str
+    analysis_result: dict
+
+
+class CallListResponse(BaseModel):
+    records: list[CallRecordSummary]
+    total: int
+    limit: int
+    offset: int
+
+
+class KeywordCount(BaseModel):
+    keyword: str
+    count: int
+
+
+class AnalyticsSummaryResponse(BaseModel):
+    total_calls: int
+    high_risk_calls: int
+    average_risk_score: float
+    risk_level_counts: dict[str, int]
+    prediction_counts: dict[str, int]
+    top_keywords: list[KeywordCount]
+    recent_calls: list[CallRecordSummary]
