@@ -732,38 +732,6 @@ export default function Home() {
             ) : null}
           </Panel>
 
-          <Panel icon={<PlayCircle size={20} />} title="演示样例">
-            <div className="space-y-2">
-              {demoSamples.map((sample) => (
-                <button
-                  className="w-full rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3 text-left transition hover:border-[#0f766e] hover:bg-[#f3fbf9] disabled:cursor-wait disabled:opacity-70"
-                  disabled={loadingDemoId !== null || isLoading || isRecording}
-                  key={sample.id}
-                  onClick={() => void loadDemoSample(sample)}
-                  type="button"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-[#171b22]">{sample.title}</p>
-                      <p className="mt-1 text-xs leading-5 text-[#667085]">{sample.description}</p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium ${
-                        demoLabelTone[sample.label] ?? "border-[#dde2ea] bg-[#f2f5f8] text-[#667085]"
-                      }`}
-                    >
-                      {demoLabelCopy[sample.label] ?? sample.label}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 text-xs text-[#667085]">
-                    <span>{sample.has_audio ? sample.audio_file_name : "纯文本"}</span>
-                    {loadingDemoId === sample.id ? <span>载入中</span> : null}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </Panel>
-
           <Panel icon={<MessageSquareText size={20} />} title="通话文本">
             <textarea
               className="min-h-36 w-full resize-y rounded-md border border-[#cfd7e3] bg-[#fbfcfe] p-3 text-sm leading-6 outline-none transition placeholder:text-[#98a2b3] focus:border-[#0f766e] focus:bg-white"
@@ -795,6 +763,38 @@ export default function Home() {
                 {error}
               </div>
             ) : null}
+          </Panel>
+
+          <Panel icon={<PlayCircle size={20} />} title="演示样例">
+            <div className="space-y-2">
+              {demoSamples.map((sample) => (
+                <button
+                  className="w-full rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3 text-left transition hover:border-[#0f766e] hover:bg-[#f3fbf9] disabled:cursor-wait disabled:opacity-70"
+                  disabled={loadingDemoId !== null || isLoading || isRecording}
+                  key={sample.id}
+                  onClick={() => void loadDemoSample(sample)}
+                  type="button"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-[#171b22]">{sample.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-[#667085]">{sample.description}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium ${
+                        demoLabelTone[sample.label] ?? "border-[#dde2ea] bg-[#f2f5f8] text-[#667085]"
+                      }`}
+                    >
+                      {demoLabelCopy[sample.label] ?? sample.label}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-[#667085]">
+                    <span>{sample.has_audio ? sample.audio_file_name : "纯文本"}</span>
+                    {loadingDemoId === sample.id ? <span>载入中</span> : null}
+                  </div>
+                </button>
+              ))}
+            </div>
           </Panel>
 
           <Panel icon={<Activity size={20} />} title="信号概览">
