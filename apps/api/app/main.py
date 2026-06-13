@@ -21,6 +21,7 @@ from callguard_ml.audio_features import (  # noqa: E402
     DEFAULT_DURATION_SECONDS,
     DEFAULT_SAMPLE_RATE,
     extract_audio_features,
+    get_audio_duration_seconds,
 )
 from callguard_ml.emotion_model import (  # noqa: E402
     analyze_emotion_model,
@@ -44,6 +45,8 @@ from .schemas import (  # noqa: E402
     EmotionPressureDriver,
     FusionDiagnostics,
     RiskFactor,
+    RiskTimelineSegment,
+    RiskTimelineSummary,
     RuleCreateRequest,
     RuleResponse,
     RuleUpdateRequest,
@@ -100,6 +103,9 @@ EMOTION_MODEL_PATH = Path(
     )
 )
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+TIMELINE_WINDOW_SECONDS = 5.0
+TIMELINE_HOP_SECONDS = 5.0
+TIMELINE_MAX_SEGMENTS = 80
 
 
 DEMO_SAMPLES = [
@@ -189,6 +195,7 @@ EMOTION_NOTES = [
 
 FUSION_NOTES = [
     "\u878d\u5408\u8bc4\u5206\u4f7f\u7528 CallGuard CAEF\uff0c\u4f1a\u6839\u636e\u6a21\u6001\u53ef\u9760\u6027\u548c\u5f53\u524d\u7f6e\u4fe1\u5ea6\u52a8\u6001\u5206\u914d\u6743\u91cd\u3002",
+    "\u957f\u97f3\u9891\u4f1a\u6309 5 \u79d2\u65f6\u95f4\u7a97\u751f\u6210\u98ce\u9669\u65f6\u95f4\u7ebf\uff0c\u7528\u4e8e\u5b9a\u4f4d\u901a\u8bdd\u4e2d\u98ce\u9669\u5347\u9ad8\u7684\u7247\u6bb5\u3002",
     "\u672a\u8f93\u5165\u6587\u672c\u65f6\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u4f7f\u7528\u672c\u5730 Whisper \u6a21\u578b\u751f\u6210 transcript\u3002",
     "\u6587\u672c\u98ce\u9669\u7531 TF-IDF \u6587\u672c\u6a21\u578b\u548c\u5173\u952e\u8bcd\u89c4\u5219\u878d\u5408\u5f97\u5230\u3002",
     "\u5f53\u524d ASR \u4f18\u5148\u4f7f\u7528 faster-whisper-small\uff0c\u672a\u4e0b\u8f7d\u65f6\u81ea\u52a8\u56de\u9000\u5230 base/tiny\u3002",
@@ -462,6 +469,8 @@ async def analyze_call(
     audio_result: AnalyzeAudioResponse | None = None
     emotion_result: AnalyzeEmotionResponse | None = None
     asr_result: TranscriptionResponse | None = None
+    timeline: list[RiskTimelineSegment] = []
+    timeline_summary: RiskTimelineSummary | None = None
 
     if file is not None:
         temp_path = await save_upload_to_temp(file)
@@ -473,6 +482,10 @@ async def analyze_call(
                 asr_result = transcribe_audio_path(temp_path)
                 display_transcript = asr_result.text
                 model_transcript = asr_result.raw_text or asr_result.text
+            timeline, timeline_summary = analyze_risk_timeline(
+                temp_path,
+                asr_result,
+            )
         except HTTPException:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -503,6 +516,8 @@ async def analyze_call(
         fusion_method=fusion_method,
         decision_threshold=decision_threshold,
         fusion_diagnostics=diagnostics,
+        timeline=timeline,
+        timeline_summary=timeline_summary,
         suggestion=build_fusion_suggestion(level, audio_result, text_result),
         notes=FUSION_NOTES,
     )
@@ -552,6 +567,159 @@ def analyze_text_content(text: str) -> AnalyzeTextResponse:
     )
 
 
+def analyze_risk_timeline(
+    audio_path: Path,
+    asr_result: TranscriptionResponse | None,
+) -> tuple[list[RiskTimelineSegment], RiskTimelineSummary | None]:
+    duration_seconds = get_timeline_duration(audio_path, asr_result)
+    if duration_seconds <= 0:
+        return [], None
+
+    segments: list[RiskTimelineSegment] = []
+    start = 0.0
+    index = 0
+    while start < duration_seconds and len(segments) < TIMELINE_MAX_SEGMENTS:
+        end = min(start + TIMELINE_WINDOW_SECONDS, duration_seconds)
+        if end - start < 0.75:
+            break
+
+        timeline_segment = analyze_timeline_window(
+            audio_path=audio_path,
+            index=index,
+            start=start,
+            end=end,
+            asr_result=asr_result,
+        )
+        if timeline_segment is not None:
+            segments.append(timeline_segment)
+
+        index += 1
+        start += TIMELINE_HOP_SECONDS
+
+    if not segments:
+        return [], None
+
+    peak = max(segments, key=lambda item: item.risk_score)
+    summary = RiskTimelineSummary(
+        duration_seconds=round(duration_seconds, 2),
+        window_seconds=TIMELINE_WINDOW_SECONDS,
+        hop_seconds=TIMELINE_HOP_SECONDS,
+        segment_count=len(segments),
+        medium_or_high_segments=sum(1 for item in segments if item.risk_score >= 0.5),
+        high_risk_segments=sum(1 for item in segments if item.risk_score >= 0.75),
+        peak_risk_score=peak.risk_score,
+        peak_start=peak.start,
+        peak_end=peak.end,
+    )
+    return segments, summary
+
+
+def analyze_timeline_window(
+    audio_path: Path,
+    index: int,
+    start: float,
+    end: float,
+    asr_result: TranscriptionResponse | None,
+) -> RiskTimelineSegment | None:
+    window_duration = max(end - start, 0.75)
+    try:
+        features = extract_audio_features(
+            audio_path,
+            sample_rate=DEFAULT_SAMPLE_RATE,
+            duration=min(DEFAULT_DURATION_SECONDS, window_duration),
+            offset=start,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+    audio_probabilities = load_audio_model().predict_proba(features.reshape(1, -1))[0]
+    audio_score = float(audio_probabilities[1])
+    transcript = timeline_text_for_window(asr_result, start, end)
+    text_result = analyze_text_content(transcript) if transcript else None
+    text_score = text_result.risk_score if text_result else None
+    pressure_score = analyze_timeline_pressure(features)
+
+    audio_response = timeline_audio_response(audio_score, index, start, end)
+    risk_score, _, _, decision_threshold, _ = fuse_scores(audio_response, text_result)
+    level = risk_level_from_score(risk_score)
+    if risk_score >= decision_threshold and level == "normal":
+        level = "low"
+
+    return RiskTimelineSegment(
+        index=index,
+        start=round(start, 2),
+        end=round(end, 2),
+        risk_score=round(risk_score, 4),
+        risk_level=level,
+        audio_score=round(audio_score, 4),
+        text_score=round(text_score, 4) if text_score is not None else None,
+        pressure_score=round(pressure_score, 4) if pressure_score is not None else None,
+        transcript=transcript,
+        factors=text_result.factors if text_result else [],
+    )
+
+
+def timeline_audio_response(
+    audio_score: float,
+    index: int,
+    start: float,
+    end: float,
+) -> AnalyzeAudioResponse:
+    level = risk_level_from_score(audio_score)
+    return AnalyzeAudioResponse(
+        file_name=f"timeline_{index}_{start:.1f}_{end:.1f}",
+        prediction="fraud" if audio_score >= 0.5 else "normal",
+        risk_score=round(audio_score, 4),
+        risk_level=level,
+        probabilities={
+            "normal": round(1 - audio_score, 4),
+            "fraud": round(audio_score, 4),
+        },
+        model="logistic_regression_audio_features",
+        feature_window_seconds=min(DEFAULT_DURATION_SECONDS, end - start),
+        suggestion=build_audio_suggestion(level, "fraud" if audio_score >= 0.5 else "normal"),
+        notes=AUDIO_NOTES,
+    )
+
+
+def analyze_timeline_pressure(features) -> float | None:
+    if not EMOTION_MODEL_PATH.exists():
+        return None
+    try:
+        prediction = analyze_emotion_model(load_emotion_model(), features)
+        return float(prediction.pressure_score)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def timeline_text_for_window(
+    asr_result: TranscriptionResponse | None,
+    start: float,
+    end: float,
+) -> str:
+    if asr_result is None:
+        return ""
+    texts = [
+        segment.text
+        for segment in asr_result.segments
+        if segment.end > start and segment.start < end and segment.text.strip()
+    ]
+    return simplify_chinese_text(" ".join(texts))
+
+
+def get_timeline_duration(
+    audio_path: Path,
+    asr_result: TranscriptionResponse | None,
+) -> float:
+    try:
+        duration = get_audio_duration_seconds(audio_path)
+    except Exception:  # noqa: BLE001
+        duration = 0.0
+    if asr_result is not None:
+        duration = max(duration, asr_result.duration_seconds)
+    return duration
+
+
 def load_keyword_groups_for_analysis() -> dict[str, list[str]]:
     try:
         groups = get_enabled_keyword_groups()
@@ -585,6 +753,8 @@ def save_call_record_safely(
             "emotion_model": response.emotion.model if response.emotion else None,
             "asr_model": response.asr.model if response.asr else None,
             "decision_threshold": response.decision_threshold,
+            "timeline_segments": len(response.timeline),
+            "timeline_peak": response.timeline_summary.peak_risk_score if response.timeline_summary else None,
         }
         return create_call_record(
             input_type=input_type,

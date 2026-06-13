@@ -23,9 +23,10 @@ def extract_audio_features(
     audio_path: str | Path,
     sample_rate: int = DEFAULT_SAMPLE_RATE,
     duration: float = DEFAULT_DURATION_SECONDS,
+    offset: float = 0.0,
 ) -> np.ndarray:
     path = Path(audio_path)
-    y, sr = librosa.load(path, sr=sample_rate, mono=True, duration=duration)
+    y, sr = librosa.load(path, sr=sample_rate, mono=True, offset=offset, duration=duration)
     if y.size == 0:
         raise ValueError(f"empty audio: {path}")
 
@@ -43,3 +44,7 @@ def extract_audio_features(
 
     return np.asarray(features, dtype=np.float32)
 
+
+def get_audio_duration_seconds(audio_path: str | Path) -> float:
+    path = Path(audio_path)
+    return float(librosa.get_duration(path=path))

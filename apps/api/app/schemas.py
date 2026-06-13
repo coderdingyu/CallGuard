@@ -93,6 +93,31 @@ class FusionDiagnostics(BaseModel):
     rule_adjustment: float
 
 
+class RiskTimelineSegment(BaseModel):
+    index: int
+    start: float
+    end: float
+    risk_score: float
+    risk_level: str
+    audio_score: float | None
+    text_score: float | None
+    pressure_score: float | None
+    transcript: str
+    factors: list[RiskFactor]
+
+
+class RiskTimelineSummary(BaseModel):
+    duration_seconds: float
+    window_seconds: float
+    hop_seconds: float
+    segment_count: int
+    medium_or_high_segments: int
+    high_risk_segments: int
+    peak_risk_score: float
+    peak_start: float | None
+    peak_end: float | None
+
+
 class AnalyzeCallResponse(BaseModel):
     record_id: int | None = None
     prediction: str
@@ -108,6 +133,8 @@ class AnalyzeCallResponse(BaseModel):
     fusion_method: str
     decision_threshold: float
     fusion_diagnostics: FusionDiagnostics | None
+    timeline: list[RiskTimelineSegment] = Field(default_factory=list)
+    timeline_summary: RiskTimelineSummary | None = None
     suggestion: str
     notes: list[str]
 

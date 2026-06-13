@@ -100,6 +100,31 @@ interface TranscriptionResult {
   }>;
 }
 
+interface RiskTimelineSegment {
+  index: number;
+  start: number;
+  end: number;
+  risk_score: number;
+  risk_level: RiskLevel;
+  audio_score: number | null;
+  text_score: number | null;
+  pressure_score: number | null;
+  transcript: string;
+  factors: RiskFactor[];
+}
+
+interface RiskTimelineSummary {
+  duration_seconds: number;
+  window_seconds: number;
+  hop_seconds: number;
+  segment_count: number;
+  medium_or_high_segments: number;
+  high_risk_segments: number;
+  peak_risk_score: number;
+  peak_start: number | null;
+  peak_end: number | null;
+}
+
 interface CallAnalysisResult {
   record_id: number | null;
   prediction: "normal" | "fraud";
@@ -123,6 +148,8 @@ interface CallAnalysisResult {
     agreement: number;
     rule_adjustment: number;
   } | null;
+  timeline: RiskTimelineSegment[];
+  timeline_summary: RiskTimelineSummary | null;
   suggestion: string;
   notes: string[];
 }
@@ -853,6 +880,8 @@ export default function Home() {
             </div>
           </Panel>
 
+          <TimelinePanel result={result} />
+
           <Panel icon={<MessageSquareText size={20} />} title="自动转写">
             <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
               <p className="min-h-16 text-sm leading-7 text-[#344054]">
@@ -1083,6 +1112,16 @@ export default function Home() {
                   <p className="mb-2 text-sm font-medium text-[#344054]">通话文本</p>
                   <p className="max-h-56 overflow-auto text-sm leading-7 text-[#475467]">{selectedRecord.transcript || "无文本"}</p>
                 </div>
+                {selectedRecord.analysis_result.timeline_summary ? (
+                  <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
+                    <p className="mb-3 text-sm font-medium text-[#344054]">风险时间线摘要</p>
+                    <div className="grid gap-3 text-sm text-[#475467]">
+                      <InfoRow label="片段数" value={`${selectedRecord.analysis_result.timeline_summary.segment_count}`} />
+                      <InfoRow label="峰值风险" value={`${Math.round(selectedRecord.analysis_result.timeline_summary.peak_risk_score * 100)}/100`} />
+                      <InfoRow label="峰值位置" value={`${formatTimelineTime(selectedRecord.analysis_result.timeline_summary.peak_start ?? 0)} - ${formatTimelineTime(selectedRecord.analysis_result.timeline_summary.peak_end ?? 0)}`} />
+                    </div>
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap gap-2">
                   {selectedRecord.risk_factors.length > 0 ? selectedRecord.risk_factors.map((factor) => (
                     <span className="rounded-md bg-[#e6f4f1] px-2.5 py-1 text-sm font-medium text-[#0f766e]" key={`${factor.group}-${factor.keyword}`}>
@@ -1311,6 +1350,115 @@ function ProgressBar({ value, level, compact = false }: { value: number; level: 
   );
 }
 
+function TimelinePanel({ result }: { result: CallAnalysisResult | null }) {
+  const timeline = result?.timeline ?? [];
+  const summary = result?.timeline_summary ?? null;
+  const peakPercent = Math.round((summary?.peak_risk_score ?? 0) * 100);
+
+  return (
+    <Panel icon={<Activity size={20} />} title="风险时间线">
+      {timeline.length === 0 ? (
+        <div className="rounded-md border border-dashed border-[#cfd7e3] bg-[#fbfcfe] p-5 text-sm leading-6 text-[#667085]">
+          上传或录制音频后，系统会按 5 秒窗口生成分段风险时间线，定位通话中风险升高的片段。
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-4">
+            <TimelineStat label="音频时长" value={formatTimelineTime(summary?.duration_seconds ?? 0)} />
+            <TimelineStat label="片段数" value={`${summary?.segment_count ?? timeline.length}`} />
+            <TimelineStat label="中高风险片段" value={`${summary?.medium_or_high_segments ?? 0}`} />
+            <TimelineStat label="峰值风险" value={`${peakPercent}/100`} />
+          </div>
+
+          <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
+            <div className="mb-3 flex items-center justify-between text-sm">
+              <span className="text-[#667085]">Timeline overview</span>
+              <span className="font-medium">
+                峰值 {summary?.peak_start !== null && summary?.peak_start !== undefined
+                  ? `${formatTimelineTime(summary.peak_start)} - ${formatTimelineTime(summary.peak_end ?? summary.peak_start)}`
+                  : "--"}
+              </span>
+            </div>
+            <div className="flex h-14 items-end gap-1">
+              {timeline.map((segment) => (
+                <div
+                  className={`min-w-2 flex-1 rounded-t ${
+                    segment.risk_level === "high"
+                      ? "bg-[#e11d48]"
+                      : segment.risk_level === "medium"
+                        ? "bg-[#d97706]"
+                        : segment.risk_level === "low"
+                          ? "bg-[#0284c7]"
+                          : "bg-[#0f766e]"
+                  }`}
+                  key={segment.index}
+                  style={{ height: `${Math.max(8, Math.round(segment.risk_score * 100))}%` }}
+                  title={`${formatTimelineTime(segment.start)}-${formatTimelineTime(segment.end)} ${Math.round(segment.risk_score * 100)}/100`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="max-h-[420px] space-y-3 overflow-auto pr-1">
+            {timeline.map((segment) => (
+              <div className="rounded-md border border-[#dde2ea] bg-white p-4" key={segment.index}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">
+                      {formatTimelineTime(segment.start)} - {formatTimelineTime(segment.end)}
+                    </p>
+                    <p className="mt-1 text-sm text-[#667085]">
+                      音频 {scoreCopy(segment.audio_score)} · 文本 {scoreCopy(segment.text_score)} · 压力 {scoreCopy(segment.pressure_score)}
+                    </p>
+                  </div>
+                  <RiskBadge level={segment.risk_level} />
+                </div>
+
+                <ProgressBar
+                  compact
+                  level={segment.risk_level}
+                  value={Math.round(segment.risk_score * 100)}
+                />
+
+                {segment.transcript ? (
+                  <p className="mt-3 rounded-md bg-[#f2f5f8] p-3 text-sm leading-6 text-[#475467]">
+                    {segment.transcript}
+                  </p>
+                ) : (
+                  <p className="mt-3 text-sm text-[#98a2b3]">该片段暂无可用转写文本，仅使用音频信号评估。</p>
+                )}
+
+                {segment.factors.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {segment.factors.map((factor) => (
+                      <span className="rounded-md bg-[#e6f4f1] px-2.5 py-1 text-xs font-medium text-[#0f766e]" key={`${segment.index}-${factor.group}-${factor.keyword}`}>
+                        {factor.keyword}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function TimelineStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3">
+      <p className="text-xs text-[#667085]">{label}</p>
+      <p className="mt-1 text-lg font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function scoreCopy(value: number | null) {
+  return value === null ? "--" : `${Math.round(value * 100)}/100`;
+}
+
 function RecordTable({
   records,
   onOpen,
@@ -1405,6 +1553,15 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+function formatTimelineTime(seconds: number) {
+  const safeSeconds = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(safeSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const rest = (safeSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${rest}`;
 }
 
 function formatDuration(seconds: number) {
