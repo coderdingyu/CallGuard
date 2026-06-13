@@ -134,9 +134,40 @@ npm run ml:train:adaptive-fusion
 npm run api:dev
 npm run web:dev
 npm run web:build
+npm run web:start
 npm run check
 npm run test:api
 ```
+
+## 云端演示版部署
+
+项目支持两种运行形态：
+
+- 本地完整版：用于展示 ASR、音频风险、压力识别、CAEF 融合和长音频风险时间线。
+- 云端演示版：用于发布在线体验链接，默认不上传大数据、ASR 大模型和 `.joblib` 模型，保留文本风险、规则管理、历史记录和 Dashboard。
+
+云端后端环境变量示例：
+
+```text
+CALLGUARD_DEMO_MODE=1
+CALLGUARD_DEPLOYMENT_MODE=cloud-demo
+CALLGUARD_DB_PATH=/data/callguard.db
+CALLGUARD_CORS_ORIGINS=https://你的前端域名
+```
+
+云端前端环境变量示例：
+
+```text
+NEXT_PUBLIC_API_URL=https://你的后端域名
+```
+
+本地 Docker 演示：
+
+```powershell
+docker compose -f docker-compose.demo.yml up --build
+```
+
+也可以使用仓库中的 `render.yaml` 部署后端，用 `vercel.json` 部署前端。更详细步骤见 [docs/deployment.md](docs/deployment.md)。
 
 ## 当前模型指标
 
@@ -170,6 +201,13 @@ CallGuard CAEF 融合方法:
 CallGuardAI 的产品外壳更接近 hackathon 平台，强调部署、历史、看板、认证和多语言包装。CallGuard 的核心优势是中文场景、真实数据集、可复现训练链路和自定义融合方法。
 
 本项目现在补齐了 CallGuardAI 式产品外壳中的关键部分：历史记录、数据看板和规则管理；同时保留 TeleAntiFraud、CSEMOTIONS、faster-whisper、文本 baseline、音频 baseline 和 CAEF 融合方法。
+
+## 可选拓展状态
+
+- 云端部署：已补齐云端演示模式、Docker、Render/Vercel 配置和部署状态页。
+- 登录注册：暂不默认启用，避免账号系统抢占机器学习主线；未来可接入 Clerk/Auth.js，并按 user_id 隔离历史记录。
+- 多语言：暂不作为当前主线，保持中文诈骗通话数据和中文解释优势；未来可先做 UI 国际化。
+- AI 伪造语音检测：已作为未来拓展模块和文档路线保留，详见 [docs/future_spoof_detection.md](docs/future_spoof_detection.md)。
 
 ## 项目结构
 

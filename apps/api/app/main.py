@@ -42,7 +42,9 @@ from .schemas import (  # noqa: E402
     CallRecordDetail,
     DemoSampleResponse,
     DeleteResponse,
+    DeploymentStatusResponse,
     EmotionPressureDriver,
+    FeatureStatus,
     FusionDiagnostics,
     RiskFactor,
     RiskTimelineSegment,
@@ -54,6 +56,7 @@ from .schemas import (  # noqa: E402
     TranscriptionSegment,
 )
 from .storage import (  # noqa: E402
+    DB_PATH,
     analytics_summary,
     create_call_record,
     create_rule,
@@ -106,6 +109,21 @@ MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 TIMELINE_WINDOW_SECONDS = 5.0
 TIMELINE_HOP_SECONDS = 5.0
 TIMELINE_MAX_SEGMENTS = 80
+API_VERSION = "0.4.0"
+CALLGUARD_DEMO_MODE = os.environ.get("CALLGUARD_DEMO_MODE", "").lower() in {"1", "true", "yes", "demo"}
+CALLGUARD_DEPLOYMENT_MODE = os.environ.get(
+    "CALLGUARD_DEPLOYMENT_MODE",
+    "cloud-demo" if CALLGUARD_DEMO_MODE else "local-full",
+)
+
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
+]
 
 
 DEMO_SAMPLES = [
@@ -202,22 +220,22 @@ FUSION_NOTES = [
 ]
 
 
+def get_cors_origins() -> list[str]:
+    raw_origins = os.environ.get("CALLGUARD_CORS_ORIGINS", "")
+    if not raw_origins.strip():
+        return DEFAULT_CORS_ORIGINS
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+
 app = FastAPI(
     title="CallGuard API",
-    version="0.3.0",
+    version=API_VERSION,
     description="Backend service for call-risk analysis.",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:3002",
-        "http://127.0.0.1:3002",
-    ],
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -231,7 +249,76 @@ def startup() -> None:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "callguard-api"}
+    return {"status": "ok", "service": "callguard-api", "mode": CALLGUARD_DEPLOYMENT_MODE}
+
+
+@app.get("/api/deployment/status", response_model=DeploymentStatusResponse)
+def deployment_status() -> DeploymentStatusResponse:
+    asr_path = find_asr_model_path()
+    features = [
+        FeatureStatus(
+            id="text-risk",
+            name="文本风险识别",
+            enabled=True,
+            status="model+rules" if TEXT_MODEL_PATH.exists() else "rules-only",
+            detail="使用 TF-IDF 文本模型和关键词规则；缺少模型时自动回退到规则引擎。",
+        ),
+        FeatureStatus(
+            id="audio-risk",
+            name="音频风险识别",
+            enabled=AUDIO_MODEL_PATH.exists(),
+            status="ready" if AUDIO_MODEL_PATH.exists() else "model-missing",
+            detail="需要本地 audio_baseline/model.joblib；云端轻量演示默认不上传该模型。",
+        ),
+        FeatureStatus(
+            id="asr",
+            name="ASR 自动转写",
+            enabled=asr_path is not None,
+            status=asr_path.name if asr_path else "model-missing",
+            detail="优先使用 faster-whisper-small/base/tiny；云端演示可先使用手动文本输入。",
+        ),
+        FeatureStatus(
+            id="pressure",
+            name="语音压力识别",
+            enabled=EMOTION_MODEL_PATH.exists(),
+            status="ready" if EMOTION_MODEL_PATH.exists() else "model-missing",
+            detail="需要 CSEMOTIONS 情绪/压力模型；本地完整版支持音频压力分支。",
+        ),
+        FeatureStatus(
+            id="fusion",
+            name="CAEF 融合",
+            enabled=True,
+            status="caef" if FUSION_CONFIG_PATH.exists() else "fixed-fallback",
+            detail="存在 adaptive_fusion.json 时使用 CAEF；否则使用固定权重融合。",
+        ),
+        FeatureStatus(
+            id="product-shell",
+            name="产品化外壳",
+            enabled=True,
+            status="ready",
+            detail="历史记录、Dashboard、规则管理和演示样例均可用于本地或云端 demo。",
+        ),
+    ]
+    limitations = [
+        "云端演示版不上传 TeleAntiFraud/CSEMOTIONS 原始数据、ASR 大模型和 .joblib 模型文件。",
+        "云端默认适合展示文本风险、规则管理、历史记录和 Dashboard；完整音频链路建议在本地运行。",
+    ]
+    if AUDIO_MODEL_PATH.exists() and EMOTION_MODEL_PATH.exists() and asr_path is not None:
+        limitations = ["当前环境具备完整音频/文本/压力/融合链路，可作为本地完整版演示。"]
+
+    return DeploymentStatusResponse(
+        mode=CALLGUARD_DEPLOYMENT_MODE,
+        demo_mode=CALLGUARD_DEMO_MODE,
+        api_version=API_VERSION,
+        database_path=str(DB_PATH),
+        features=features,
+        limitations=limitations,
+        next_steps=[
+            "云端部署时把 NEXT_PUBLIC_API_URL 指向公开 API 地址。",
+            "如果需要登录注册，可在前端接入 Clerk/Auth.js，并把历史记录按 user_id 隔离。",
+            "AI 伪造语音检测建议作为独立研究拓展，不替代当前通话风险主线。",
+        ],
+    )
 
 
 @app.get("/api/demo/samples", response_model=list[DemoSampleResponse])
@@ -368,11 +455,11 @@ def emotion_model_status() -> dict[str, str | bool]:
 
 @app.get("/api/model/asr/status")
 def asr_model_status() -> dict[str, str | bool]:
-    selected_path = get_asr_model_path()
+    selected_path = find_asr_model_path()
     return {
-        "model_path": str(selected_path),
-        "available": selected_path.exists(),
-        "model": selected_path.name,
+        "model_path": str(selected_path) if selected_path else "",
+        "available": selected_path is not None,
+        "model": selected_path.name if selected_path else "not_configured",
         "small_available": ASR_SMALL_MODEL_PATH.exists(),
         "base_available": ASR_BASE_MODEL_PATH.exists(),
         "fallback_available": ASR_FALLBACK_MODEL_PATH.exists(),
@@ -910,6 +997,16 @@ def load_adaptive_fusion_config():
 
 
 def get_asr_model_path() -> Path:
+    selected_path = find_asr_model_path()
+    if selected_path is not None:
+        return selected_path
+    raise HTTPException(
+        status_code=503,
+        detail="ASR model not found: faster-whisper-small/base/tiny",
+    )
+
+
+def find_asr_model_path() -> Path | None:
     if ASR_MODEL_PATH and ASR_MODEL_PATH.exists():
         return ASR_MODEL_PATH
     if ASR_SMALL_MODEL_PATH.exists():
@@ -918,10 +1015,7 @@ def get_asr_model_path() -> Path:
         return ASR_BASE_MODEL_PATH
     if ASR_FALLBACK_MODEL_PATH.exists():
         return ASR_FALLBACK_MODEL_PATH
-    raise HTTPException(
-        status_code=503,
-        detail="ASR model not found: faster-whisper-small/base/tiny",
-    )
+    return None
 
 
 def find_demo_sample(sample_id: str) -> dict[str, str]:

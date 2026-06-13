@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      CALLGUARD_DEMO_MODE: "1"
+      CALLGUARD_DEPLOYMENT_MODE: cloud-demo
+      CALLGUARD_DB_PATH: /data/callguard.db
+      CALLGUARD_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    ports:
+      - "8001:8001"
+    volumes:
+      - callguard-data:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:8001
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  callguard-data:

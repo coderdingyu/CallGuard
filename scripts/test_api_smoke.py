@@ -26,6 +26,14 @@ def main() -> None:
         health = client.get("/health")
         assert_ok(health.status_code == 200, "health endpoint failed")
 
+        deployment = client.get("/api/deployment/status")
+        assert_ok(deployment.status_code == 200, "deployment status endpoint failed")
+        deployment_payload = deployment.json()
+        assert_ok(
+            any(feature["id"] == "text-risk" for feature in deployment_payload["features"]),
+            "deployment status did not include text-risk capability",
+        )
+
         reset = client.post("/api/rules/reset-defaults")
         assert_ok(reset.status_code == 200, "rule reset failed")
         assert_ok(len(reset.json()) > 0, "default rules were not initialized")

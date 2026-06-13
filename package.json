@@ -10,6 +10,7 @@
   "scripts": {
     "web:dev": "npm --workspace apps/web run dev",
     "web:build": "npm --workspace apps/web run build",
+    "web:start": "npm --workspace apps/web run start",
     "web:lint": "npm --workspace apps/web run lint",
     "api:dev": ".venv\\Scripts\\python.exe -m uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8001",
     "data:download:teleantifraud": ".venv\\Scripts\\python.exe scripts/download_datasets.py --dataset teleantifraud --method curl --endpoint https://hf-mirror.com",

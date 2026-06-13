@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: callguard-api
+    env: docker
+    dockerfilePath: ./Dockerfile.api
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: CALLGUARD_DEMO_MODE
+        value: "1"
+      - key: CALLGUARD_DEPLOYMENT_MODE
+        value: cloud-demo
+      - key: CALLGUARD_DB_PATH
+        value: /data/callguard.db
+      - key: CALLGUARD_CORS_ORIGINS
+        sync: false
+    disk:
+      name: callguard-data
+      mountPath: /data
+      sizeGB: 1

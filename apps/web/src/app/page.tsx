@@ -5,11 +5,15 @@ import {
   AlertTriangle,
   AudioWaveform,
   BarChart3,
+  Cloud,
   Database,
   FileAudio,
+  Fingerprint,
   Gauge,
   HeartPulse,
   History,
+  KeyRound,
+  Languages,
   LoaderCircle,
   MessageSquareText,
   Mic,
@@ -17,6 +21,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Server,
   ShieldCheck,
   SlidersHorizontal,
   Square,
@@ -28,7 +33,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8001";
 
-type View = "analyze" | "dashboard" | "history" | "rules";
+type View = "analyze" | "dashboard" | "history" | "rules" | "deploy";
 type RiskLevel = "normal" | "low" | "medium" | "high";
 
 interface RiskFactor {
@@ -202,6 +207,24 @@ interface AnalyticsSummary {
   recent_calls: CallRecordSummary[];
 }
 
+interface FeatureStatus {
+  id: string;
+  name: string;
+  enabled: boolean;
+  status: string;
+  detail: string;
+}
+
+interface DeploymentStatus {
+  mode: string;
+  demo_mode: boolean;
+  api_version: string;
+  database_path: string;
+  features: FeatureStatus[];
+  limitations: string[];
+  next_steps: string[];
+}
+
 interface RuleRecord {
   id: number;
   group: string;
@@ -245,7 +268,8 @@ const navItems: Array<{ id: View; label: string; icon: ReactNode }> = [
   { id: "analyze", label: "分析台", icon: <ShieldCheck size={16} /> },
   { id: "dashboard", label: "数据看板", icon: <BarChart3 size={16} /> },
   { id: "history", label: "历史记录", icon: <History size={16} /> },
-  { id: "rules", label: "规则管理", icon: <SlidersHorizontal size={16} /> }
+  { id: "rules", label: "规则管理", icon: <SlidersHorizontal size={16} /> },
+  { id: "deploy", label: "部署拓展", icon: <Cloud size={16} /> }
 ];
 
 export default function Home() {
@@ -265,6 +289,7 @@ export default function Home() {
   const [recordsTotal, setRecordsTotal] = useState(0);
   const [selectedRecord, setSelectedRecord] = useState<CallRecordDetail | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
+  const [deploymentStatus, setDeploymentStatus] = useState<DeploymentStatus | null>(null);
   const [rules, setRules] = useState<RuleRecord[]>([]);
   const [ruleFilter, setRuleFilter] = useState("");
   const [ruleForm, setRuleForm] = useState({ group: "money_transfer", keyword: "", weight: "1.0" });
@@ -308,6 +333,7 @@ export default function Home() {
 
   useEffect(() => {
     void loadDemoSamples();
+    void loadDeploymentStatus();
     void refreshOverview();
   }, []);
 
@@ -347,6 +373,14 @@ export default function Home() {
       setDemoSamples(Array.isArray(payload) ? payload : []);
     } catch {
       setDemoSamples([]);
+    }
+  }
+
+  async function loadDeploymentStatus() {
+    try {
+      setDeploymentStatus(await apiJson<DeploymentStatus>("/api/deployment/status"));
+    } catch {
+      setDeploymentStatus(null);
     }
   }
 
@@ -691,6 +725,7 @@ export default function Home() {
       {activeView === "dashboard" ? renderDashboardView() : null}
       {activeView === "history" ? renderHistoryView() : null}
       {activeView === "rules" ? renderRulesView() : null}
+      {activeView === "deploy" ? renderDeployView() : null}
     </main>
   );
 
@@ -1252,6 +1287,137 @@ export default function Home() {
       </section>
     );
   }
+
+  function renderDeployView() {
+    const status = deploymentStatus;
+    const featureList = status?.features ?? [
+      {
+        id: "offline",
+        name: "部署状态",
+        enabled: false,
+        status: "未连接",
+        detail: "请先启动后端服务，或检查 NEXT_PUBLIC_API_URL 是否指向正确的 API 地址。"
+      }
+    ];
+
+    return (
+      <section className="mx-auto max-w-7xl px-6 py-8">
+        <ViewHeader
+          title="部署与拓展"
+          description="把本地机器学习系统整理成可展示、可部署、可解释的产品原型；云端演示版保留轻量能力，本地完整版保留完整音频模型链路。"
+        />
+
+        <section className="grid gap-4 md:grid-cols-4">
+          <Metric icon={<Cloud size={18} />} label="部署模式" unit="" value={status?.demo_mode ? "Demo" : "Full"} />
+          <Metric icon={<Server size={18} />} label="API 版本" unit="" value={status?.api_version ?? "--"} />
+          <Metric icon={<ShieldCheck size={18} />} label="在线能力" unit="项" value={String(featureList.filter((item) => item.enabled).length)} />
+          <Metric icon={<Database size={18} />} label="本地记录" unit="条" value={String(analytics?.total_calls ?? 0)} />
+        </section>
+
+        <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_380px]">
+          <Panel icon={<Server size={20} />} title="运行能力">
+            <div className="grid gap-3 md:grid-cols-2">
+              {featureList.map((feature) => (
+                <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4" key={feature.id}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{feature.name}</p>
+                      <p className="mt-1 text-sm text-[#667085]">{feature.status}</p>
+                    </div>
+                    <span
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                        feature.enabled ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
+                      }`}
+                    >
+                      {feature.enabled ? "可用" : "受限"}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-[#475467]">{feature.detail}</p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel icon={<Cloud size={20} />} title="云端演示版">
+            <div className="space-y-4 text-sm leading-6 text-[#475467]">
+              <p>
+                云端部署建议采用“前端 Vercel + 后端 Render/Railway”的轻量组合，公开演示时使用文本风险、规则管理、历史记录和看板。
+              </p>
+              <div className="rounded-md bg-[#f2f5f8] p-3">
+                <p className="font-medium text-[#344054]">推荐环境变量</p>
+                <p className="mt-2 font-mono text-xs">CALLGUARD_DEMO_MODE=1</p>
+                <p className="font-mono text-xs">NEXT_PUBLIC_API_URL=https://你的后端地址</p>
+              </div>
+              <div className="space-y-2">
+                {(status?.limitations ?? ["当前未读取到部署状态，请检查后端服务。"]).map((item) => (
+                  <p className="rounded-md border border-[#dde2ea] bg-white p-3" key={item}>{item}</p>
+                ))}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel icon={<Fingerprint size={20} />} title="AI 伪造语音检测">
+            <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                <p className="font-semibold">未来拓展，不作为当前主线</p>
+                <p className="mt-2 text-sm leading-6">
+                  它可以增强产品完整度，但不要替代本项目的中文通话风险、压力感知和 CAEF 融合主题。
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <RoadmapCard title="数据准备" description="准备真实/合成语音、TTS、VC 和 replay 样本，避免只用单一来源。" />
+                <RoadmapCard title="声学检测" description="提取频谱、相位、伪影和说话人一致性特征，训练二分类模型。" />
+                <RoadmapCard title="融合接入" description="将伪造概率作为独立安全信号接入 CAEF，而不是直接判定诈骗。" />
+              </div>
+            </div>
+          </Panel>
+
+          <Panel icon={<KeyRound size={20} />} title="登录注册取舍">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
+                <p className="font-semibold">当前版本不强制登录</p>
+                <p className="mt-2 text-sm leading-6 text-[#475467]">
+                  更适合课堂展示：打开即可体验，避免账号系统抢走机器学习主线。
+                </p>
+              </div>
+              <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
+                <p className="font-semibold">未来接入方式</p>
+                <p className="mt-2 text-sm leading-6 text-[#475467]">
+                  若做多人使用，可以接入 Clerk/Auth.js，并在历史记录表增加 user_id 字段实现数据隔离。
+                </p>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel icon={<Languages size={20} />} title="多语言策略">
+            <div className="space-y-3 text-sm leading-6 text-[#475467]">
+              <p>
+                当前不急于做多语言，因为项目优势在中文诈骗话术、中文 ASR 和中文数据集。多语言适合作为部署后的国际化包装，而不是课程报告主线。
+              </p>
+              <div className="grid gap-3 md:grid-cols-3">
+                <RoadmapCard title="中文优先" description="保持 TeleAntiFraud 和中文规则解释为核心。" />
+                <RoadmapCard title="英文界面" description="未来可只翻译 UI 文案，不改变模型主线。" />
+                <RoadmapCard title="跨语种模型" description="需要另行补充英文通话欺诈语料和 ASR 评测。" />
+              </div>
+            </div>
+          </Panel>
+
+          <Panel icon={<ShieldCheck size={20} />} title="下一步">
+            <div className="space-y-2">
+              {(status?.next_steps ?? [
+                "启动后端后刷新本页。",
+                "部署时把前端环境变量 NEXT_PUBLIC_API_URL 指向公开后端地址。"
+              ]).map((item) => (
+                <div className="rounded-md bg-[#f2f5f8] p-3 text-sm leading-6 text-[#475467]" key={item}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </section>
+      </section>
+    );
+  }
 }
 
 function Panel({ icon, title, children }: { icon?: ReactNode; title?: string; children: ReactNode }) {
@@ -1451,6 +1617,15 @@ function TimelineStat({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3">
       <p className="text-xs text-[#667085]">{label}</p>
       <p className="mt-1 text-lg font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function RoadmapCard({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
+      <p className="font-semibold">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-[#475467]">{description}</p>
     </div>
   );
 }

@@ -23,6 +23,24 @@ class DemoSampleResponse(BaseModel):
     audio_file_name: str | None = None
 
 
+class FeatureStatus(BaseModel):
+    id: str
+    name: str
+    enabled: bool
+    status: str
+    detail: str
+
+
+class DeploymentStatusResponse(BaseModel):
+    mode: str
+    demo_mode: bool
+    api_version: str
+    database_path: str
+    features: list[FeatureStatus]
+    limitations: list[str]
+    next_steps: list[str]
+
+
 class AnalyzeTextResponse(BaseModel):
     risk_score: float
     risk_level: str
