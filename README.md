@@ -205,9 +205,9 @@ CallGuardAI 的产品外壳更接近 hackathon 平台，强调部署、历史、
 ## 可选拓展状态
 
 - 云端部署：已补齐云端演示模式、Docker、Render/Vercel 配置和部署状态页。
-- 登录注册：暂不默认启用，避免账号系统抢占机器学习主线；未来可接入 Clerk/Auth.js，并按 user_id 隔离历史记录。
-- 多语言：暂不作为当前主线，保持中文诈骗通话数据和中文解释优势；未来可先做 UI 国际化。
-- AI 伪造语音检测：已作为未来拓展模块和文档路线保留，详见 [docs/future_spoof_detection.md](docs/future_spoof_detection.md)。
+- 登录注册：未纳入当前产品界面，避免账号系统抢占机器学习主线。
+- 多语言：未纳入当前产品界面，当前保持中文诈骗通话数据和中文解释优势。
+- AI 伪造语音检测：未纳入当前产品界面，仅作为报告中的未来工作讨论，参考 [docs/future_spoof_detection.md](docs/future_spoof_detection.md)。
 
 ## 项目结构
 

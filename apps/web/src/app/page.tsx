@@ -8,12 +8,9 @@ import {
   Cloud,
   Database,
   FileAudio,
-  Fingerprint,
   Gauge,
   HeartPulse,
   History,
-  KeyRound,
-  Languages,
   LoaderCircle,
   MessageSquareText,
   Mic,
@@ -269,7 +266,7 @@ const navItems: Array<{ id: View; label: string; icon: ReactNode }> = [
   { id: "dashboard", label: "数据看板", icon: <BarChart3 size={16} /> },
   { id: "history", label: "历史记录", icon: <History size={16} /> },
   { id: "rules", label: "规则管理", icon: <SlidersHorizontal size={16} /> },
-  { id: "deploy", label: "部署拓展", icon: <Cloud size={16} /> }
+  { id: "deploy", label: "部署状态", icon: <Cloud size={16} /> }
 ];
 
 export default function Home() {
@@ -1303,8 +1300,8 @@ export default function Home() {
     return (
       <section className="mx-auto max-w-7xl px-6 py-8">
         <ViewHeader
-          title="部署与拓展"
-          description="把本地机器学习系统整理成可展示、可部署、可解释的产品原型；云端演示版保留轻量能力，本地完整版保留完整音频模型链路。"
+          title="部署状态"
+          description="查看当前运行模式、模型可用性和云端演示配置。本地完整版保留完整音频模型链路，云端演示版保留轻量可访问能力。"
         />
 
         <section className="grid gap-4 md:grid-cols-4">
@@ -1352,52 +1349,6 @@ export default function Home() {
                 {(status?.limitations ?? ["当前未读取到部署状态，请检查后端服务。"]).map((item) => (
                   <p className="rounded-md border border-[#dde2ea] bg-white p-3" key={item}>{item}</p>
                 ))}
-              </div>
-            </div>
-          </Panel>
-
-          <Panel icon={<Fingerprint size={20} />} title="AI 伪造语音检测">
-            <div className="grid gap-4 md:grid-cols-[260px_1fr]">
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-900">
-                <p className="font-semibold">未来拓展，不作为当前主线</p>
-                <p className="mt-2 text-sm leading-6">
-                  它可以增强产品完整度，但不要替代本项目的中文通话风险、压力感知和 CAEF 融合主题。
-                </p>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                <RoadmapCard title="数据准备" description="准备真实/合成语音、TTS、VC 和 replay 样本，避免只用单一来源。" />
-                <RoadmapCard title="声学检测" description="提取频谱、相位、伪影和说话人一致性特征，训练二分类模型。" />
-                <RoadmapCard title="融合接入" description="将伪造概率作为独立安全信号接入 CAEF，而不是直接判定诈骗。" />
-              </div>
-            </div>
-          </Panel>
-
-          <Panel icon={<KeyRound size={20} />} title="登录注册取舍">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
-                <p className="font-semibold">当前版本不强制登录</p>
-                <p className="mt-2 text-sm leading-6 text-[#475467]">
-                  更适合课堂展示：打开即可体验，避免账号系统抢走机器学习主线。
-                </p>
-              </div>
-              <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
-                <p className="font-semibold">未来接入方式</p>
-                <p className="mt-2 text-sm leading-6 text-[#475467]">
-                  若做多人使用，可以接入 Clerk/Auth.js，并在历史记录表增加 user_id 字段实现数据隔离。
-                </p>
-              </div>
-            </div>
-          </Panel>
-
-          <Panel icon={<Languages size={20} />} title="多语言策略">
-            <div className="space-y-3 text-sm leading-6 text-[#475467]">
-              <p>
-                当前不急于做多语言，因为项目优势在中文诈骗话术、中文 ASR 和中文数据集。多语言适合作为部署后的国际化包装，而不是课程报告主线。
-              </p>
-              <div className="grid gap-3 md:grid-cols-3">
-                <RoadmapCard title="中文优先" description="保持 TeleAntiFraud 和中文规则解释为核心。" />
-                <RoadmapCard title="英文界面" description="未来可只翻译 UI 文案，不改变模型主线。" />
-                <RoadmapCard title="跨语种模型" description="需要另行补充英文通话欺诈语料和 ASR 评测。" />
               </div>
             </div>
           </Panel>
@@ -1617,15 +1568,6 @@ function TimelineStat({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-3">
       <p className="text-xs text-[#667085]">{label}</p>
       <p className="mt-1 text-lg font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function RoadmapCard({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="rounded-md border border-[#dde2ea] bg-[#fbfcfe] p-4">
-      <p className="font-semibold">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-[#475467]">{description}</p>
     </div>
   );
 }

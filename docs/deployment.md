@@ -28,7 +28,6 @@ npm run web:dev
 - 历史记录
 - Dashboard
 - 部署状态页
-- AI 伪造语音检测路线说明
 
 后端环境变量：
 

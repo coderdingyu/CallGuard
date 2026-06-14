@@ -315,8 +315,8 @@ def deployment_status() -> DeploymentStatusResponse:
         limitations=limitations,
         next_steps=[
             "云端部署时把 NEXT_PUBLIC_API_URL 指向公开 API 地址。",
-            "如果需要登录注册，可在前端接入 Clerk/Auth.js，并把历史记录按 user_id 隔离。",
-            "AI 伪造语音检测建议作为独立研究拓展，不替代当前通话风险主线。",
+            "后端部署后设置 CALLGUARD_CORS_ORIGINS 为前端公开域名。",
+            "完整 ASR、音频风险和压力识别链路建议保留在本地完整版中演示。",
         ],
     )
 
